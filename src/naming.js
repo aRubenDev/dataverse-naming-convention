@@ -136,15 +136,53 @@
   }
 
   /**
-   * Nombre de relación: {TablaPrincipal}_{1N|NN}_{TablaSecundaria}
-   * con los nombres para mostrar de las tablas en snake_case.
+   * Parte de una tabla dentro del nombre de relación:
+   * - con nombre lógico: prefijoPublicador + nombre lógico (ecija_gs_sociedad)
+   * - sin él: nombre para mostrar en snake_case (sociedad)
    */
-  function buildRelationshipName({ primary, secondary, type, settings }) {
+  function relationshipToken({ logical, display, pub, settings }) {
+    if (logical) {
+      const l = String(logical).toLowerCase();
+      return pub && !l.startsWith(pub) ? pub + l : l;
+    }
     const stop = (settings && settings.stopWords) || DEFAULT_STOP_WORDS;
-    const a = toSnake(primary, stop);
-    const b = toSnake(secondary, stop);
-    if (!a || !b || !type) return '';
-    return a + '_' + type + '_' + b;
+    return toSnake(display, stop);
+  }
+
+  /**
+   * Nombre de relación (sin el prefijo del publicador que el portal muestra aparte):
+   * {TablaPrincipal}_{1N|NN}_{TablaSecundaria}  →  gs_sociedad_1N_ecija_gs_auditor
+   */
+  function buildRelationshipName({ primary, secondary, type, pub }) {
+    if (!primary || !secondary || !type) return '';
+    let a = primary;
+    if (pub && a.startsWith(pub)) a = a.slice(pub.length);
+    return a + '_' + type + '_' + secondary;
+  }
+
+  /**
+   * Extrae los nombres lógicos del valor por defecto que genera el portal para la
+   * relación de un lookup: {actual}_{esquemaColumna}_{pub}{relacionada}
+   * p. ej. gs_acta_puntos_orden_dia_lookup_ecija_gs_puntoordendia
+   */
+  function parsePortalRelationshipDefault(value, { schemaPart, pub }) {
+    const v = String(value || '').toLowerCase();
+    const s = String(schemaPart || '').toLowerCase();
+    const out = {};
+    if (!v || /_(1n|nn)_/.test(v)) return out; // ya es un nombre nuestro
+    if (s) {
+      const i = v.indexOf('_' + s + '_');
+      if (i > 0) { out.current = v.slice(0, i); out.related = v.slice(i + s.length + 2); }
+    }
+    if (!out.related && pub) {
+      const j = v.lastIndexOf('_' + pub);
+      if (j >= 0) out.related = v.slice(j + 1);
+    }
+    if (out.related && pub && out.related.startsWith(pub)) out.related = out.related.slice(pub.length);
+    const valid = x => /^[a-z][a-z0-9_]*[a-z0-9]$/.test(x || '');
+    if (!valid(out.current)) delete out.current;
+    if (!valid(out.related)) delete out.related;
+    return out;
   }
 
   function validateRelationship(value, { type }) {
@@ -207,7 +245,8 @@
   const api = {
     DEFAULT_STOP_WORDS, CATEGORIES, CHOICE_TYPE,
     stripAccents, normalizeText, detectType, toSnake, cleanSuffix, cleanPrefix,
-    suffixFor, buildName, validate, buildRelationshipName, validateRelationship,
+    suffixFor, buildName, validate, relationshipToken, buildRelationshipName,
+    parsePortalRelationshipDefault, validateRelationship,
     defaultSettings, mergeSettings,
     parseContext, resolveProject
   };

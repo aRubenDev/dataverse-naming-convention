@@ -172,12 +172,84 @@
     return '';
   }
 
-  /** Asigna valor a un input controlado por React y notifica el cambio. */
+  /**
+   * Asigna valor a un input controlado por React y notifica el cambio.
+   * Si el portal mueve el foco como efecto secundario, lo devuelve donde estaba
+   * el usuario (con el cursor en su sitio).
+   */
   function setNativeValue(el, value) {
+    const prev = document.activeElement;
+    let selS = null, selE = null;
+    try { selS = prev.selectionStart; selE = prev.selectionEnd; } catch (e) { /* noop */ }
+    const restore = () => {
+      if (!prev || prev === el || prev === document.body || !prev.isConnected) return;
+      if (document.activeElement === prev) return;
+      if (document.activeElement && document.activeElement !== el && document.activeElement !== document.body) return;
+      try {
+        prev.focus({ preventScroll: true });
+        if (selS != null) prev.setSelectionRange(selS, selE);
+      } catch (e) { /* noop */ }
+    };
     const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
     Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, value);
     el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
+    restore();
+    setTimeout(restore, 0);
+    setTimeout(restore, 60);
+  }
+
+  // ¿El usuario está filtrando en un desplegable con búsqueda (p. ej. tabla relacionada)?
+  const COMBO_SEL = 'input[role="combobox"], [aria-autocomplete]';
+  let lastComboInput = 0;
+  function userBusyInCombo() {
+    const ae = document.activeElement;
+    if (!ae || !ae.matches || !ae.matches(COMBO_SEL)) return false;
+    return ae.getAttribute('aria-expanded') === 'true' || Date.now() - lastComboInput < 1500;
+  }
+
+  // ---------- Caché de nombres lógicos (aprendidos del portal) ----------
+  // entities: { idEntidadURL: nombreLogico }, names: { envId: { nombreMostrarNormalizado: nombreLogico } }
+  let logicalCache = { entities: {}, names: {} };
+  try {
+    chrome.storage.local.get('logicalCache', r => {
+      const c = r && r.logicalCache;
+      if (c) logicalCache = { entities: c.entities || {}, names: c.names || {} };
+    });
+  } catch (e) { /* noop */ }
+  let saveTimer = null;
+  function saveLogicalCache() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      try { chrome.storage.local.set({ logicalCache }); } catch (e) { /* noop */ }
+    }, 500);
+  }
+  const entityKey = () => { const m = location.pathname.match(/\/entities\/([^/?#]+)/i); return m ? m[1].toLowerCase() : null; };
+  const envKey = () => N.parseContext(location.href).envId || '_';
+  function rememberLogical({ display, logical, isCurrent }) {
+    if (!logical) return;
+    let changed = false;
+    if (isCurrent && entityKey() && logicalCache.entities[entityKey()] !== logical) {
+      logicalCache.entities[entityKey()] = logical; changed = true;
+    }
+    if (display) {
+      const env = envKey();
+      logicalCache.names[env] = logicalCache.names[env] || {};
+      if (logicalCache.names[env][norm(display)] !== logical) { logicalCache.names[env][norm(display)] = logical; changed = true; }
+    }
+    if (changed) saveLogicalCache();
+  }
+  function knownLogical({ display, isCurrent }) {
+    if (isCurrent && entityKey() && logicalCache.entities[entityKey()]) return logicalCache.entities[entityKey()];
+    const names = logicalCache.names[envKey()] || {};
+    return display ? names[norm(display)] || null : null;
+  }
+  /** Describe una tabla: { display, logical, source } */
+  function tableInfo(display, source, isCurrent) {
+    if (!display && !isCurrent) return null;
+    const logical = knownLogical({ display, isCurrent });
+    if (!display && !logical) return null;
+    return { display: display || '', logical, source: source || '' };
   }
 
   const isLocked = el => el.disabled || el.readOnly ||
@@ -190,8 +262,7 @@
     const fromPanel = readControlText(ctl).trim();
     if (fromPanel) return { name: fromPanel, source: 'panel' };
 
-    const m = location.pathname.match(/\/entities\/([^/?#]+)/i);
-    const key = m ? m[1].toLowerCase() : null;
+    const key = entityKey();
 
     const clean = t => (t || '').replace(/[›»>/\\|]/g, ' ').replace(/\s+/g, ' ').trim();
     const outside = el => !el.closest(CONTAINER_SEL);
@@ -230,21 +301,25 @@
    * Rellena un campo con `expected` (salvo edición manual) y pinta su aviso.
    * evaluate(valueSinPrefijo) -> { level: 'ok'|'warn', msg, details: [] }
    */
-  function manageField(input, { expected, evaluate, publisherPrefix }) {
+  function manageField(input, { expected, evaluate, publisherPrefix, onForeignValue }) {
     if (!input) return;
     if (isLocked(input)) { dropState(input); return; }
     let st = states.get(input);
-    if (!st) { st = { manual: false }; states.set(input, st); }
+    if (!st) { st = { manual: false, lastSet: null }; states.set(input, st); }
 
     const adorn = detectAdornment(input);
     const pub = adorn || publisherPrefix || '';
     const includePub = !adorn && !!pub && input.value.toLowerCase().startsWith(pub);
     st.pub = pub;
-    st.expected = expected || '';
 
-    if (!st.manual && st.expected) {
+    // Valor que no hemos puesto nosotros ni el usuario => lo ha generado el portal.
+    if (onForeignValue && !st.manual && input.value && input.value !== st.lastSet) onForeignValue(input.value);
+
+    st.expected = (typeof expected === 'function' ? expected(pub) : expected) || '';
+
+    if (!st.manual && st.expected && !userBusyInCombo()) {
       const full = (includePub ? pub : '') + st.expected;
-      if (input.value !== full) setNativeValue(input, full);
+      if (input.value !== full) { setNativeValue(input, full); st.lastSet = full; }
     }
     let value = input.value || '';
     if (pub && value.toLowerCase().startsWith(pub)) value = value.slice(pub.length);
@@ -327,24 +402,38 @@
   }
 
   // ---------- Relación ----------
-  function manageRelationship(relInput, { primary, secondary, type, proj }) {
-    const p = primary && primary.name;
-    const s = secondary && secondary.name;
-    const expected = N.buildRelationshipName({ primary: p, secondary: s, type, settings });
-    const details = [
-      'Tabla principal: ' + (p ? `${p} (${primary.source})` : 'no detectada'),
-      'Tabla secundaria: ' + (s ? `${s} (${secondary.source})` : 'no detectada')
-    ];
+  /**
+   * primary/secondary: () => { display, logical, source } | null
+   * (funciones para que se evalúen después de aprender del valor del portal)
+   */
+  function manageRelationship(relInput, { primary, secondary, type, proj, onForeignValue }) {
+    let P = null, S = null;
+    const describe = t => !t ? 'no detectada'
+      : (t.logical ? t.logical + ' (nombre lógico)' : `${t.display} (nombre para mostrar · ${t.source}; nombre lógico aún no conocido)`);
     manageField(relInput, {
-      expected,
       publisherPrefix: proj.publisherPrefix,
+      onForeignValue,
+      expected: pub => {
+        P = primary(); S = secondary();
+        if (!P || !S || !type) return '';
+        const tp = N.relationshipToken({ logical: P.logical, display: P.display, pub, settings });
+        const ts = N.relationshipToken({ logical: S.logical, display: S.display, pub, settings });
+        return N.buildRelationshipName({ primary: tp, secondary: ts, type, pub });
+      },
       evaluate: value => {
+        const details = ['Tabla principal: ' + describe(P), 'Tabla secundaria: ' + describe(S)];
         if (!type) return { level: 'warn', msg: 'No se detecta el tipo de relación (1:N / N:N)', details };
-        if (!p || !s) {
-          const miss = !p && !s ? 'las tablas' : !p ? 'la tabla principal' : 'la tabla secundaria';
+        if (!P || !S) {
+          const miss = !P && !S ? 'las tablas' : !P ? 'la tabla principal' : 'la tabla secundaria';
           return { level: 'warn', msg: `No se detecta ${miss}: no se genera el nombre de la relación`, details };
         }
-        return issuesResult(N.validateRelationship(value, { type }), `Cumple estándar · Relación ${type}: ${p} → ${s}`, details);
+        const name = t => t.logical || t.display;
+        const issues = N.validateRelationship(value, { type });
+        const partial = !P.logical || !S.logical;
+        if (!issues.length && partial) {
+          return { level: 'warn', msg: `Relación ${type}: ${name(P)} → ${name(S)} · falta el nombre lógico de ${!P.logical && !S.logical ? 'ambas tablas' : 'una tabla'} (se usa el nombre para mostrar)`, details };
+        }
+        return issuesResult(issues, `Cumple estándar · Relación ${type}: ${name(P)} → ${name(S)}`, details);
       }
     });
   }
@@ -364,12 +453,22 @@
 
     if (relInput && type && type.key === 'lookup') {
       const relatedCtl = findControl(c, LBL.relatedTable, INPUT_SEL + ', ' + TYPE_SEL);
-      const related = readControlText(relatedCtl).trim();
+      const relatedDisplay = readControlText(relatedCtl).trim();
+      const cur = currentTableName(c);
       manageRelationship(relInput, {
-        primary: related ? { name: related, source: 'tabla relacionada' } : null,
-        secondary: currentTableName(c),
+        primary: () => tableInfo(relatedDisplay, 'tabla relacionada', false),
+        secondary: () => tableInfo(cur && cur.name, cur && cur.source, true),
         type: '1N',
-        proj
+        proj,
+        // El valor por defecto del portal contiene los nombres lógicos de ambas tablas.
+        onForeignValue: value => {
+          const pub = detectAdornment(relInput) || proj.publisherPrefix || '';
+          let schemaPart = schema.value || '';
+          if (pub && schemaPart.toLowerCase().startsWith(pub)) schemaPart = schemaPart.slice(pub.length);
+          const found = N.parsePortalRelationshipDefault(value, { schemaPart, pub });
+          if (found.current) rememberLogical({ display: cur && cur.name, logical: found.current, isCurrent: true });
+          if (found.related && relatedDisplay) rememberLogical({ display: relatedDisplay, logical: found.related });
+        }
       });
     }
   }
@@ -404,8 +503,9 @@
 
     const relatedCtl = findControl(c, LBL.relatedTable, INPUT_SEL + ', ' + TYPE_SEL);
     const relatedName = readControlText(relatedCtl).trim();
-    const related = relatedName ? { name: relatedName, source: 'tabla relacionada' } : null;
-    const current = currentTableName(c);
+    const cur = currentTableName(c);
+    const related = () => tableInfo(relatedName, 'tabla relacionada', false);
+    const current = () => tableInfo(cur && cur.name, cur && cur.source, true);
 
     const type = kind === 'NN' ? 'NN' : kind ? '1N' : null;
     const [primary, secondary] = kind === '1N-related' ? [related, current] : [current, related];
@@ -464,6 +564,7 @@
   // Escritura manual en un campo gestionado => no volver a tocarlo.
   document.addEventListener('input', e => {
     if (!e.isTrusted) return;
+    if (e.target.matches && e.target.matches(COMBO_SEL)) lastComboInput = Date.now();
     const st = states.get(e.target);
     if (st) { st.manual = true; schedule(0); return; }
     schedule(150); // p. ej. nombre para mostrar o búsqueda de tabla relacionada

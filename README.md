@@ -39,10 +39,16 @@ Tras modificar el código: botón ⟳ de la extensión y recarga la pestaña del
 | Relaciones → Varios a varios | `[tabla actual]_NN_[tabla relacionada]` |
 | Editar columna existente / crear tabla | No hace nada |
 
-En las relaciones se usan los **nombres para mostrar** de las tablas en snake_case
-(`Punto orden día` → `punto_orden_dia`). La tabla actual se lee de la ruta de navegación
-(breadcrumb) o del título de la página; el aviso (pasa el ratón) indica qué tablas y de
-dónde se han detectado.
+En las relaciones cada tabla se escribe como **prefijo del publicador + nombre lógico**:
+`ecija_gs_sociedad_1N_ecija_gs_auditor`. Los nombres lógicos se aprenden del valor que
+propone el portal al crear un lookup (`gs_acta_<columna>_ecija_gs_puntoordendia`) y se
+guardan en una caché local (vaciable desde la configuración). Si aún no se conoce el
+nombre lógico de una tabla, se usa su nombre para mostrar en snake_case y el aviso lo
+indica. La tabla actual se identifica por la URL, la ruta de navegación o el título.
+
+Mientras filtras en un desplegable con búsqueda (p. ej. "Tabla relacionada") la
+extensión no escribe en ningún campo, y si el portal mueve el foco al rellenar un
+campo, lo devuelve a donde estabas.
 
 El aviso bajo el nombre lógico indica si cumple (snake_case, sufijo, prefijo de proyecto).
 Es solo informativo: nunca impide guardar.

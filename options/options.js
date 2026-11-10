@@ -133,5 +133,18 @@
     $('importFile').value = '';
   });
 
+  async function showCache() {
+    const { logicalCache } = await chrome.storage.local.get('logicalCache');
+    const c = logicalCache || {};
+    const names = Object.values(c.names || {}).reduce((n, m) => n + Object.keys(m).length, 0);
+    $('cacheInfo').textContent = `${Object.keys(c.entities || {}).length} tablas por ID · ${names} por nombre para mostrar`;
+  }
+  $('clearCache').addEventListener('click', async () => {
+    if (!confirm('¿Vaciar los nombres lógicos aprendidos?')) return;
+    await chrome.storage.local.remove('logicalCache');
+    showCache();
+  });
+
   load();
+  showCache();
 })();
