@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ECIJA Dataverse Naming",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "description": "Genera el nombre lógico de columnas y opciones globales de Dataverse según el estándar ECIJA (snake_case + sufijo por tipo).",
   "permissions": ["storage", "activeTab"],
   "host_permissions": ["https://make.powerapps.com/*", "https://make.preview.powerapps.com/*"],

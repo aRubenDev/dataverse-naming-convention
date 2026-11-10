@@ -46,6 +46,17 @@ guardan en una caché local (vaciable desde la configuración). Si aún no se co
 nombre lógico de una tabla, se usa su nombre para mostrar en snake_case y el aviso lo
 indica. La tabla actual se identifica por la URL, la ruta de navegación o el título.
 
+**Varias lookups a la misma tabla.** Si el nombre de la columna de búsqueda no coincide
+con el de la tabla relacionada (se toleran singular/plural), se añade al final de la
+relación para que no se repita:
+
+| Lookup | Tabla relacionada | Relación |
+|---|---|---|
+| Auditor | gs_auditor | `gs_auditor_1N_ecija_gs_sociedad` |
+| Auditor principal | gs_auditor | `gs_auditor_1N_ecija_gs_sociedad_auditor_principal` |
+
+El aviso marca también si el nombre supera los 100 caracteres de Dataverse.
+
 Mientras filtras en un desplegable con búsqueda (p. ej. "Tabla relacionada") la
 extensión no escribe en ningún campo, y si el portal mueve el foco al rellenar un
 campo, lo devuelve a donde estabas.

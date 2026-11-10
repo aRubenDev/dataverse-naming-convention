@@ -413,29 +413,31 @@
    * primary/secondary: () => { display, logical, source } | null
    * (funciones para que se evalúen después de aprender del valor del portal)
    */
-  function manageRelationship(relInput, { primary, secondary, type, proj, onForeignValue }) {
-    let P = null, S = null;
+  function manageRelationship(relInput, { primary, secondary, type, proj, onForeignValue, qualifier }) {
+    let P = null, S = null, Q = '', PUB = '';
     const describe = t => !t ? 'no detectada'
       : (t.logical ? t.logical + ' (nombre lógico)' : `${t.display} (nombre para mostrar · ${t.source}; nombre lógico aún no conocido)`);
     manageField(relInput, {
       publisherPrefix: proj.publisherPrefix,
       onForeignValue,
       expected: pub => {
-        P = primary(); S = secondary();
+        P = primary(); S = secondary(); PUB = pub || '';
         if (!P || !S || !type) return '';
+        Q = qualifier ? qualifier(P, pub) : '';
         const tp = N.relationshipToken({ logical: P.logical, display: P.display, pub, settings });
         const ts = N.relationshipToken({ logical: S.logical, display: S.display, pub, settings });
-        return N.buildRelationshipName({ primary: tp, secondary: ts, type, pub });
+        return N.buildRelationshipName({ primary: tp, secondary: ts, type, pub, qualifier: Q });
       },
       evaluate: value => {
         const details = ['Tabla principal: ' + describe(P), 'Tabla secundaria: ' + describe(S)];
+        if (Q) details.push(`Calificador "_${Q}": la lookup no se llama como la tabla relacionada (evita duplicados)`);
         if (!type) return { level: 'warn', msg: 'No se detecta el tipo de relación (1:N / N:N)', details };
         if (!P || !S) {
           const miss = !P && !S ? 'las tablas' : !P ? 'la tabla principal' : 'la tabla secundaria';
           return { level: 'warn', msg: `No se detecta ${miss}: no se genera el nombre de la relación`, details };
         }
         const name = t => t.logical || t.display;
-        const issues = N.validateRelationship(value, { type });
+        const issues = N.validateRelationship(value, { type, pub: PUB });
         const partial = !P.logical || !S.logical;
         if (!issues.length && partial) {
           return { level: 'warn', msg: `Relación ${type}: ${name(P)} → ${name(S)} · falta el nombre lógico de ${!P.logical && !S.logical ? 'ambas tablas' : 'una tabla'} (se usa el nombre para mostrar)`, details };
@@ -467,6 +469,9 @@
         secondary: () => tableInfo(cur && cur.name, cur && cur.source, true),
         type: '1N',
         proj,
+        qualifier: (related, pub) => N.lookupQualifier({
+          lookupDisplay: display.value, related, pub, extraPrefix: proj.extraPrefix, settings
+        }),
         // El valor por defecto del portal contiene los nombres lógicos de ambas tablas.
         onForeignValue: value => {
           const pub = detectAdornment(relInput) || proj.publisherPrefix || '';

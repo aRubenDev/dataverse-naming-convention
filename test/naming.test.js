@@ -92,4 +92,26 @@ t('relaciones', () => {
   assert.ok(N.validateRelationship('acta_NN_contacto', { type: '1N' })[0].includes('1N'));
 });
 
+t('varias lookups a la misma tabla', () => {
+  const pub = 'ecija_';
+  const q = (lookupDisplay, related, extraPrefix) => N.lookupQualifier({ lookupDisplay, related, pub, extraPrefix, settings: S });
+  const aud = { logical: 'gs_auditor', display: 'Auditor' };
+  assert.strictEqual(q('Auditor', aud), '');
+  assert.strictEqual(q('Auditor', { logical: 'gs_auditor' }), '');
+  assert.strictEqual(q('GS Auditor', aud, 'gs'), '');
+  assert.strictEqual(q('Punto orden día', { logical: 'gs_puntoordendia' }), '');
+  assert.strictEqual(q('Puntos orden día', { logical: 'gs_puntoordendia', display: 'Punto orden día' }), '');
+  assert.strictEqual(q('Auditores', aud), '');
+  assert.strictEqual(q('Auditor principal', aud), 'auditor_principal');
+  assert.strictEqual(q('Auditor de la Sociedad', { display: 'Auditor' }), 'auditor_sociedad');
+  assert.strictEqual(q('', aud), '');
+  const tok = l => N.relationshipToken({ logical: l, pub, settings: S });
+  assert.strictEqual(
+    N.buildRelationshipName({ primary: tok('gs_auditor'), secondary: tok('gs_sociedad'), type: '1N', pub, qualifier: q('Auditor suplente', aud) }),
+    'gs_auditor_1N_ecija_gs_sociedad_auditor_suplente');
+  assert.deepStrictEqual(N.validateRelationship('gs_auditor_1N_ecija_gs_sociedad_auditor_suplente', { type: '1N', pub }), []);
+  const long = 'a'.repeat(50) + '_1N_' + 'b'.repeat(50);
+  assert.ok(N.validateRelationship(long, { type: '1N', pub })[0].includes('100'));
+});
+
 console.log(`\n${ok} grupos de tests OK`);

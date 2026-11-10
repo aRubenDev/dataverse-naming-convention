@@ -153,12 +153,43 @@
    * Nombre de relación (sin el prefijo del publicador que el portal muestra aparte):
    * {TablaPrincipal}_{1N|NN}_{TablaSecundaria}  →  gs_sociedad_1N_ecija_gs_auditor
    */
-  function buildRelationshipName({ primary, secondary, type, pub }) {
+  function buildRelationshipName({ primary, secondary, type, pub, qualifier }) {
     if (!primary || !secondary || !type) return '';
     let a = primary;
     if (pub && a.startsWith(pub)) a = a.slice(pub.length);
-    return a + '_' + type + '_' + secondary;
+    return a + '_' + type + '_' + secondary + (qualifier ? '_' + qualifier : '');
   }
+
+  /**
+   * Calificador para distinguir varias lookups a la misma tabla: el nombre de la
+   * lookup en snake_case, solo si no coincide con el de la tabla relacionada.
+   *   "Auditor"           → gs_auditor  → ''
+   *   "Auditor principal" → gs_auditor  → 'auditor_principal'
+   */
+  function lookupQualifier({ lookupDisplay, related, pub, extraPrefix, settings }) {
+    const stop = (settings && settings.stopWords) || DEFAULT_STOP_WORDS;
+    let q = toSnake(lookupDisplay || '', stop);
+    const xp = cleanPrefix(extraPrefix || '');
+    if (xp && q.startsWith(xp + '_')) q = q.slice(xp.length + 1);
+    if (!q) return '';
+    // Comparación tolerante a plurales: "Puntos orden día" ≈ "Punto orden día" / gs_puntoordendia
+    const sing = w => w.length > 4 && /[^aeiou]es$/.test(w) ? w.slice(0, -2) : w.length > 3 && /s$/.test(w) ? w.slice(0, -1) : w;
+    const key = snake => String(snake || '').split('_').filter(Boolean).map(sing).join('');
+    const same = new Set();
+    if (related && related.display) same.add(key(toSnake(related.display, stop)));
+    if (related && related.logical) {
+      let l = String(related.logical).toLowerCase();
+      if (pub && l.startsWith(pub)) l = l.slice(pub.length);
+      const add = x => { same.add(key(x)); same.add(sing(x.replace(/_/g, ''))); };
+      add(l);
+      const i = l.indexOf('_');
+      if (i > 0) add(l.slice(i + 1)); // sin prefijo de proyecto (gs_auditor → auditor)
+    }
+    return same.has(key(q)) ? '' : q;
+  }
+
+  /** Límite de Dataverse para el nombre de esquema de una relación (incluye el prefijo). */
+  const RELATIONSHIP_MAX = 100;
 
   /**
    * Extrae los nombres lógicos del valor por defecto que genera el portal para la
@@ -185,7 +216,7 @@
     return out;
   }
 
-  function validateRelationship(value, { type }) {
+  function validateRelationship(value, { type, pub }) {
     const v = String(value || '');
     if (!v) return ['El nombre de la relación está vacío'];
     const issues = [];
@@ -194,6 +225,8 @@
     } else if (type && !v.includes('_' + type + '_')) {
       issues.push('El tipo de relación debe ser ' + type);
     }
+    const total = v.length + String(pub || '').length;
+    if (total > RELATIONSHIP_MAX) issues.push(`Supera el límite de ${RELATIONSHIP_MAX} caracteres de Dataverse (${total})`);
     return issues;
   }
 
@@ -245,7 +278,7 @@
   const api = {
     DEFAULT_STOP_WORDS, CATEGORIES, CHOICE_TYPE,
     stripAccents, normalizeText, detectType, toSnake, cleanSuffix, cleanPrefix,
-    suffixFor, buildName, validate, relationshipToken, buildRelationshipName,
+    suffixFor, buildName, validate, relationshipToken, buildRelationshipName, lookupQualifier, RELATIONSHIP_MAX,
     parsePortalRelationshipDefault, validateRelationship,
     defaultSettings, mergeSettings,
     parseContext, resolveProject
