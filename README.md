@@ -32,7 +32,7 @@ Tras modificar el código: botón ⟳ de la extensión y recarga la pestaña del
 | Escribes el nombre para mostrar o cambias el tipo | Regenera el nombre lógico |
 | Escribes tú en el nombre lógico | Deja de tocarlo en ese panel (aunque cambies el tipo) |
 | Botón **Regenerar** del aviso | Vuelve al modo automático |
-| Panel "Nueva opción" (opción global) | Mismo cálculo con `_choice` |
+| Panel "Nueva opción" (opción global) | Mismo cálculo con `_choice` y, si hay prefijo de proyecto, el nombre para mostrar empieza por él en mayúsculas (`CRM_Estado`). Se añade una vez; si lo borras, se respeta |
 | Editar columna existente / crear tabla | No hace nada |
 
 El aviso bajo el nombre lógico indica si cumple (snake_case, sufijo, prefijo de proyecto).

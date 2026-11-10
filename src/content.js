@@ -173,7 +173,24 @@
     if (isLocked(schema)) { dropState(schema); return; } // edición de columna existente
 
     let st = states.get(schema);
-    if (!st) { st = { manual: false }; states.set(schema, st); }
+    if (!st) { st = { manual: false, displayPrefixed: false }; states.set(schema, st); }
+
+    // Opción global: el nombre para mostrar empieza por el prefijo de proyecto en
+    // mayúsculas ("CRM_"). Se aplica una sola vez por panel; si el usuario lo borra,
+    // se respeta.
+    st.displayPrefix = mode === 'choice' && proj.extraPrefix ? proj.extraPrefix.toUpperCase() + '_' : '';
+    if (st.displayPrefix && !st.displayPrefixed && !isLocked(display)) {
+      st.displayPrefixed = true;
+      if (!display.value.toUpperCase().startsWith(st.displayPrefix)) {
+        const focused = document.activeElement === display;
+        const pos = focused ? display.selectionStart : null;
+        setNativeValue(display, st.displayPrefix + display.value);
+        if (focused && pos != null) {
+          const p = pos + st.displayPrefix.length;
+          try { display.setSelectionRange(p, p); } catch (e) { /* noop */ }
+        }
+      }
+    }
     Object.assign(st, { display, type, mode, rawType: dataType ? readControlText(dataType).trim() : '' });
 
     const adorn = detectAdornment(schema);
@@ -221,6 +238,9 @@
       msg = 'Tipo de datos no reconocido' + (st.rawType ? ` («${st.rawType.slice(0, 40)}»)` : '') + ': no se genera el nombre';
     } else {
       const issues = N.validate(value, { category: st.type.category, settings, extraPrefix: proj.extraPrefix });
+      if (st.displayPrefix && !(st.display.value || '').startsWith(st.displayPrefix)) {
+        issues.push('El nombre para mostrar no empieza por ' + st.displayPrefix);
+      }
       const suffix = N.suffixFor(st.type.category, settings);
       if (issues.length) {
         level = 'warn';
@@ -234,6 +254,8 @@
     details.unshift('Nombre lógico: ' + (fullName || '—'));
     if (st.expected) details.push('Generado: ' + (st.pub || '') + st.expected);
     if (proj.extraPrefix) details.push(`Prefijo de proyecto: ${proj.extraPrefix}_ (${proj.source === 'solution' ? 'solución' : 'entorno'})`);
+
+    if (st.displayPrefix) details.push('Nombre para mostrar: debe empezar por ' + st.displayPrefix);
 
     const sig = [level, msg, st.manual, st.expected, value].join('|');
     if (st.badge.dataset.sig === sig) return;
