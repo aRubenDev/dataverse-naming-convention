@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>ECIJA Naming</title>
+  <link rel="stylesheet" href="../ui/common.css">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="row">
+    <img src="../icons/icon32.png" width="22" height="22" alt="">
+    <h1>ECIJA · Nombres lógicos</h1>
+    <label class="switch" title="Activar / desactivar">
+      <input type="checkbox" id="enabled">
+      <span></span>
+    </label>
+  </header>
+
+  <section id="noEnv" class="card" hidden>
+    Abre un entorno en <strong>make.powerapps.com</strong> para configurar su proyecto.
+  </section>
+
+  <section id="envSection" hidden>
+    <h2>Proyecto (entorno)</h2>
+    <p class="hint mono" id="envId"></p>
+
+    <label for="projName">Nombre del proyecto</label>
+    <input type="text" id="projName" placeholder="Ej.: Cliente X — CRM">
+
+    <label for="extraPrefix">Prefijo adicional</label>
+    <input type="text" id="extraPrefix" placeholder="Ej.: crm" class="mono">
+    <p class="hint">Se añade detrás del prefijo del publicador: <code>pub_<b>crm</b>_nombre_txt</code>. Vacío = sin prefijo adicional.</p>
+
+    <label for="pubPrefix">Prefijo del publicador <span class="hint">(opcional)</span></label>
+    <input type="text" id="pubPrefix" placeholder="Solo si el portal no lo muestra aparte" class="mono">
+
+    <div id="solBlock" hidden>
+      <label class="check">
+        <input type="checkbox" id="solOverride">
+        <span>Prefijo distinto para esta solución<br><span class="hint mono" id="solId"></span></span>
+      </label>
+      <input type="text" id="solPrefix" placeholder="Prefijo para esta solución" class="mono" hidden>
+    </div>
+
+    <h2 class="mt">Vista previa</h2>
+    <div class="row">
+      <input type="text" id="pvName" value="Fecha de Alta del Cliente">
+      <select id="pvType"></select>
+    </div>
+    <div class="preview" id="pvOut"></div>
+  </section>
+
+  <footer class="row">
+    <button class="btn primary" id="save">Guardar</button>
+    <span class="status" id="status"></span>
+    <a href="#" id="openOptions">Configuración avanzada</a>
+  </footer>
+
+  <script src="../src/naming.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

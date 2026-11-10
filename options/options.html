@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ECIJA Naming · Configuración</title>
+  <link rel="stylesheet" href="../ui/common.css">
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main>
+    <header class="row">
+      <img src="../icons/icon48.png" width="32" height="32" alt="">
+      <div>
+        <h1>ECIJA Dataverse Naming</h1>
+        <p class="hint">Nombre lógico = <code>prefijoPublicador_</code><code>prefijoProyecto_</code><code>nombre_en_snake</code><code>_sufijo</code></p>
+      </div>
+    </header>
+
+    <section class="card">
+      <h2>General</h2>
+      <label class="check"><input type="checkbox" id="enabled"><span>Extensión activa</span></label>
+      <label class="check"><input type="checkbox" id="autoExpand"><span>Abrir automáticamente "Opciones avanzadas" en el panel de nueva columna/opción<br><span class="hint">Necesario para poder rellenar el nombre de esquema.</span></span></label>
+      <label class="check"><input type="checkbox" id="showBadges"><span>Mostrar aviso de cumplimiento bajo el nombre lógico</span></label>
+    </section>
+
+    <section class="card">
+      <h2>Sufijos por tipo de datos</h2>
+      <table class="suffixes">
+        <thead><tr><th>Categoría</th><th>Tipos de Dataverse</th><th>Sufijo</th></tr></thead>
+        <tbody id="suffixRows"></tbody>
+      </table>
+      <p class="hint">El sufijo de Choice es fijo (<code>_choice</code>) por estándar; puedes editarlo a mano en cada creación.</p>
+    </section>
+
+    <section class="card">
+      <h2>Palabras vacías</h2>
+      <textarea id="stopWords" rows="3" class="mono"></textarea>
+      <p class="hint">Separadas por comas. Se eliminan del nombre: <em>Fecha de Alta</em> → <code>fecha_alta</code>.
+        <a href="#" id="resetStop">Restaurar valores por defecto</a></p>
+    </section>
+
+    <section class="card">
+      <h2>Proyectos por entorno</h2>
+      <p class="hint">Se crean desde el botón de la extensión estando dentro del entorno. Aquí puedes editarlos o borrarlos.</p>
+      <div id="projects"></div>
+    </section>
+
+    <section class="card">
+      <h2>Copia de seguridad</h2>
+      <p class="hint">Comparte la configuración con el equipo exportándola a JSON.</p>
+      <div class="row">
+        <button class="btn" id="export">Exportar JSON</button>
+        <button class="btn" id="importBtn">Importar JSON</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+      </div>
+    </section>
+
+    <div class="savebar row">
+      <button class="btn primary" id="save">Guardar cambios</button>
+      <span class="status" id="status"></span>
+    </div>
+  </main>
+
+  <template id="projTpl">
+    <div class="proj">
+      <div class="proj-head row">
+        <strong class="pname"></strong>
+        <span class="hint mono penv"></span>
+        <button class="btn danger del" type="button">Eliminar</button>
+      </div>
+      <div class="grid">
+        <div><label>Nombre</label><input type="text" data-f="name"></div>
+        <div><label>Prefijo adicional</label><input type="text" data-f="extraPrefix" class="mono"></div>
+        <div><label>Prefijo publicador</label><input type="text" data-f="publisherPrefix" class="mono"></div>
+      </div>
+      <div class="sols"></div>
+    </div>
+  </template>
+
+  <script src="../src/naming.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>
