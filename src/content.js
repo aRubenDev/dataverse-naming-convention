@@ -328,13 +328,19 @@
 
   function renderBadge(input, st, value, ev) {
     if (!settings.showBadges) { if (st.badge) { st.badge.remove(); st.badge = null; } return; }
+    // Mientras el usuario filtra en un desplegable no se toca el DOM: cualquier cambio
+    // de layout hace scroll en el panel y Fluent UI cierra el desplegable.
+    if (userBusyInCombo()) return;
     if (!st.badge) {
       st.badge = document.createElement('div');
       st.badge.className = 'ecija-nb';
       st.badge.setAttribute('role', 'status');
     }
+    // Solo se inserta si no está en su sitio (no se recoloca en cada pasada).
     const anchor = input.closest('.fui-Input, .ms-TextField-fieldGroup, [class*="fieldGroup"]') || input.parentElement;
-    if (anchor && (st.badge.previousElementSibling !== anchor || !st.badge.isConnected)) anchor.after(st.badge);
+    if (anchor && anchor.parentElement && (!st.badge.isConnected || st.badge.parentElement !== anchor.parentElement)) {
+      anchor.after(st.badge);
+    }
 
     const details = ['Valor: ' + ((st.pub || '') + value || '—')]
       .concat(st.expected ? ['Generado: ' + (st.pub || '') + st.expected] : [], ev.details || []);
@@ -350,6 +356,7 @@
     icon.className = 'ecija-nb-icon';
     icon.textContent = ev.level === 'ok' ? '✔' : '⚠';
     const text = document.createElement('span');
+    text.className = 'ecija-nb-text';
     text.textContent = ev.msg;
     st.badge.append(icon, text);
 
