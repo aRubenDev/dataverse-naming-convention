@@ -43,6 +43,9 @@ Conversión: minúsculas, sin tildes ni ñ, sin caracteres especiales y sin pala
 
 ## Si algo no se detecta
 
+Ejecuta [`tools/diagnostico.js`](tools/diagnostico.js) en la consola (F12) con el panel
+abierto y comparte el resultado: indica qué etiquetas y controles usa el portal.
+
 El portal cambia su HTML con frecuencia. Las etiquetas reconocidas están en
 `src/content.js` (constante `LBL`) y los textos de tipo de datos en `src/naming.js`
 (`TYPE_PATTERNS`). Si el aviso muestra "Tipo de datos no reconocido («…»), añade ese
