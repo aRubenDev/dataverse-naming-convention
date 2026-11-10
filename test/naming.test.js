@@ -69,4 +69,13 @@ t('contexto y proyecto', () => {
   assert.strictEqual(N.resolveProject(projects, { envId: 'otro' }).extraPrefix, '');
 });
 
+t('relaciones', () => {
+  assert.strictEqual(N.buildRelationshipName({ primary: 'Punto orden día', secondary: 'Acta', type: '1N', settings: S }), 'punto_orden_dia_1N_acta');
+  assert.strictEqual(N.buildRelationshipName({ primary: 'Acta', secondary: 'Asistente de la Reunión', type: 'NN', settings: S }), 'acta_NN_asistente_reunion');
+  assert.strictEqual(N.buildRelationshipName({ primary: '', secondary: 'Acta', type: '1N', settings: S }), '');
+  assert.deepStrictEqual(N.validateRelationship('punto_orden_dia_1N_acta', { type: '1N' }), []);
+  assert.strictEqual(N.validateRelationship('gs_acta_puntos_orden_dia_lookup', { type: '1N' }).length, 1);
+  assert.ok(N.validateRelationship('acta_NN_contacto', { type: '1N' })[0].includes('1N'));
+});
+
 console.log(`\n${ok} grupos de tests OK`);

@@ -33,7 +33,16 @@ Tras modificar el código: botón ⟳ de la extensión y recarga la pestaña del
 | Escribes tú en el nombre lógico | Deja de tocarlo en ese panel (aunque cambies el tipo) |
 | Botón **Regenerar** del aviso | Vuelve al modo automático |
 | Panel "Nueva opción" (opción global) | Mismo cálculo con `_choice` y, si hay prefijo de proyecto, el nombre para mostrar empieza por él en mayúsculas (`CRM_Estado`). Se añade una vez; si lo borras, se respeta |
+| Columna de tipo Búsqueda | Además, nombre de la relación: `[tabla relacionada]_1N_[tabla actual]` |
+| Relaciones → Uno a varios | `[tabla actual]_1N_[tabla relacionada]` + columna de búsqueda con `_lookup` |
+| Relaciones → Varios a uno | `[tabla relacionada]_1N_[tabla actual]` + columna de búsqueda con `_lookup` |
+| Relaciones → Varios a varios | `[tabla actual]_NN_[tabla relacionada]` |
 | Editar columna existente / crear tabla | No hace nada |
+
+En las relaciones se usan los **nombres para mostrar** de las tablas en snake_case
+(`Punto orden día` → `punto_orden_dia`). La tabla actual se lee de la ruta de navegación
+(breadcrumb) o del título de la página; el aviso (pasa el ratón) indica qué tablas y de
+dónde se han detectado.
 
 El aviso bajo el nombre lógico indica si cumple (snake_case, sufijo, prefijo de proyecto).
 Es solo informativo: nunca impide guardar.

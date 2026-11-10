@@ -16,7 +16,7 @@
 (() => {
   const n = s => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
   const panels = [...document.querySelectorAll('[role="dialog"],[aria-modal="true"],.ms-Panel,.fui-OverlayDrawer,.fui-InlineDrawer,aside')];
-  const p = panels.find(x => /tipo de datos|data type|nombre para mostrar|display name/.test(n(x.textContent))) || panels.at(-1);
+  const p = panels.find(x => /tipo de datos|data type|nombre para mostrar|display name|relacion|relationship/.test(n(x.textContent))) || panels.at(-1);
   if (!p) return console.log('NO SE ENCUENTRA EL PANEL');
   const lt = el => [
     el.getAttribute('aria-label'),
@@ -26,6 +26,11 @@
   const out = {
     url: location.pathname.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '<id>'),
     ecijaBadge: !!document.querySelector('.ecija-nb'),
+    title: document.title,
+    breadcrumb: [...document.querySelectorAll('nav[aria-label*="breadcrumb" i] li, nav[aria-label*="ruta" i] li, .fui-Breadcrumb li, .ms-Breadcrumb-listItem, [class*="breadcrumb" i] li')]
+      .filter(el => !el.closest('[role="dialog"]')).map(el => el.textContent.trim()).slice(0, 10),
+    pageHeadings: [...document.querySelectorAll('h1, [role="heading"][aria-level="1"]')]
+      .filter(el => !el.closest('[role="dialog"]')).map(el => el.textContent.trim().slice(0, 60)).slice(0, 5),
     panel: { tag: p.tagName, role: p.getAttribute('role'), cls: String(p.className).slice(0, 120) },
     headings: [...p.querySelectorAll('h1,h2,h3,[role=heading]')].map(h => n(h.textContent)).slice(0, 5),
     labels: [...p.querySelectorAll('label')].map(l => ({ t: n(l.textContent).slice(0, 60), for: l.htmlFor })).slice(0, 40),

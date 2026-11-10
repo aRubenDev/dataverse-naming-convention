@@ -135,6 +135,30 @@
     return issues;
   }
 
+  /**
+   * Nombre de relación: {TablaPrincipal}_{1N|NN}_{TablaSecundaria}
+   * con los nombres para mostrar de las tablas en snake_case.
+   */
+  function buildRelationshipName({ primary, secondary, type, settings }) {
+    const stop = (settings && settings.stopWords) || DEFAULT_STOP_WORDS;
+    const a = toSnake(primary, stop);
+    const b = toSnake(secondary, stop);
+    if (!a || !b || !type) return '';
+    return a + '_' + type + '_' + b;
+  }
+
+  function validateRelationship(value, { type }) {
+    const v = String(value || '');
+    if (!v) return ['El nombre de la relación está vacío'];
+    const issues = [];
+    if (!/^[a-z0-9]+(_[a-z0-9]+)*_(1N|NN)_[a-z0-9]+(_[a-z0-9]+)*$/.test(v)) {
+      issues.push('No sigue el patrón [tabla]_' + (type || '1N') + '_[tabla]');
+    } else if (type && !v.includes('_' + type + '_')) {
+      issues.push('El tipo de relación debe ser ' + type);
+    }
+    return issues;
+  }
+
   function defaultSettings() {
     const suffixes = {};
     CATEGORIES.forEach(c => { suffixes[c.key] = c.suffix; });
@@ -183,7 +207,8 @@
   const api = {
     DEFAULT_STOP_WORDS, CATEGORIES, CHOICE_TYPE,
     stripAccents, normalizeText, detectType, toSnake, cleanSuffix, cleanPrefix,
-    suffixFor, buildName, validate, defaultSettings, mergeSettings,
+    suffixFor, buildName, validate, buildRelationshipName, validateRelationship,
+    defaultSettings, mergeSettings,
     parseContext, resolveProject
   };
 
