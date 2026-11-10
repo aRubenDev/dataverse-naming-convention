@@ -14,7 +14,7 @@
  * desplegables). No lee datos de registros. Los GUID de la URL se ocultan.
  */
 (() => {
-  const n = s => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const n = s => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
   const panels = [...document.querySelectorAll('[role="dialog"],[aria-modal="true"],.ms-Panel,.fui-OverlayDrawer,.fui-InlineDrawer,aside')];
   const p = panels.find(x => /tipo de datos|data type|nombre para mostrar|display name|relacion|relationship/.test(n(x.textContent))) || panels.at(-1);
   if (!p) return console.log('NO SE ENCUENTRA EL PANEL');

@@ -60,7 +60,7 @@
   const CHOICE_TYPE = { key: 'globalchoice', label: 'Opción global', category: 'choice' };
 
   function stripAccents(s) {
-    return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '');
+    return String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
 
   /** Minúsculas, sin tildes, espacios colapsados, sin asteriscos de "obligatorio". */
