@@ -237,6 +237,7 @@
       enabled: true,
       autoExpand: true,
       showBadges: true,
+      saveAndNew: true,
       suffixes,
       stopWords: DEFAULT_STOP_WORDS.slice()
     };

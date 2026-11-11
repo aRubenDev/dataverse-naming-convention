@@ -42,6 +42,12 @@
     combos: [...p.querySelectorAll('[role=combobox],select,button[aria-haspopup]')].map(c => ({
       tag: c.tagName, label: lt(c).slice(0, 80), text: n(c.textContent || c.value).slice(0, 80)
     })),
+    buttons: [...p.querySelectorAll('button')].map(b => ({
+      text: n(b.textContent).slice(0, 40), label: n(b.getAttribute('aria-label')).slice(0, 40),
+      parent: String(b.parentElement?.className || b.parentElement?.tagName).slice(0, 60)
+    })).slice(-8),
+    pageButtons: [...document.querySelectorAll('button,[role=menuitem]')].filter(b => !b.closest('[role="dialog"],.ms-Panel,.fui-OverlayDrawer'))
+      .map(b => n(b.textContent || b.getAttribute('aria-label')).slice(0, 40)).filter(t => /nuev|new|column|agreg|add/.test(t)).slice(0, 10),
     expanders: [...p.querySelectorAll('[aria-expanded]')].map(b => ({ text: n(b.textContent).slice(0, 50), exp: b.getAttribute('aria-expanded') }))
   };
   copy(JSON.stringify(out, null, 1));

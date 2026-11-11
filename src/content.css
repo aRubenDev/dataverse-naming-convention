@@ -42,3 +42,38 @@
   cursor: pointer;
 }
 .ecija-nb-btn:hover { background: rgba(0, 0, 0, .06); }
+
+/* Fila propia bajo los botones del panel: no altera los botones del portal. */
+.ecija-sn {
+  display: flex;
+  flex-basis: 100%;
+  width: 100%;
+  margin-top: 8px;
+}
+.ecija-sn-btn {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid #0f6cbd;
+  border-radius: 4px;
+  background: #fff;
+  color: #0f6cbd;
+  font: 600 14px/20px "Segoe UI", system-ui, sans-serif;
+  cursor: pointer;
+}
+.ecija-sn-btn:hover:not(:disabled) { background: #ebf3fc; }
+.ecija-sn-btn:disabled { border-color: #c7c7c7; color: #a0a0a0; cursor: default; }
+
+.ecija-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 2147483647;
+  max-width: 420px;
+  padding: 10px 14px;
+  border-left: 4px solid #c98a00;
+  border-radius: 4px;
+  background: #fff4ce;
+  color: #6b4a00;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .2);
+  font: 13px/18px "Segoe UI", system-ui, sans-serif;
+}

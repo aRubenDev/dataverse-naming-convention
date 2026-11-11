@@ -37,6 +37,7 @@ Tras modificar el código: botón ⟳ de la extensión y recarga la pestaña del
 | Relaciones → Uno a varios | `[tabla actual]_1N_[tabla relacionada]` + columna de búsqueda con `_lookup` |
 | Relaciones → Varios a uno | `[tabla relacionada]_1N_[tabla actual]` + columna de búsqueda con `_lookup` |
 | Relaciones → Varios a varios | `[tabla actual]_NN_[tabla relacionada]` |
+| Botón **Guardar y crear otra** (panel Nueva columna) | Pulsa el *Guardar* del portal, espera a que se cierre el panel y vuelve a abrir uno nuevo con el mismo botón que usaste (*+ Nueva columna* o *Nuevo → Columna*). Los botones del portal no cambian |
 | Editar columna existente / crear tabla | No hace nada |
 
 En las relaciones cada tabla se escribe como **prefijo del publicador + nombre lógico**:
@@ -56,6 +57,11 @@ relación para que no se repita:
 | Auditor principal | gs_auditor | `gs_auditor_1N_ecija_gs_sociedad_auditor_principal` |
 
 El aviso marca también si el nombre supera los 100 caracteres de Dataverse.
+
+**Guardar y crear otra.** Aparece en una fila propia bajo los botones del panel de nueva
+columna y se desactiva mientras *Guardar* lo esté. Si el portal muestra un error, el panel
+se queda abierto y no se crea otra. Cualquier clic tuyo mientras guarda cancela la
+reapertura. Se puede ocultar desde la configuración.
 
 Mientras filtras en un desplegable con búsqueda (p. ej. "Tabla relacionada") la
 extensión no escribe en ningún campo, y si el portal mueve el foco al rellenar un

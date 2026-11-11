@@ -16,6 +16,7 @@
     $('enabled').checked = settings.enabled;
     $('autoExpand').checked = settings.autoExpand;
     $('showBadges').checked = settings.showBadges;
+    $('saveAndNew').checked = settings.saveAndNew;
     $('stopWords').value = settings.stopWords.join(', ');
 
     const tb = $('suffixRows');
@@ -75,6 +76,7 @@
     settings.enabled = $('enabled').checked;
     settings.autoExpand = $('autoExpand').checked;
     settings.showBadges = $('showBadges').checked;
+    settings.saveAndNew = $('saveAndNew').checked;
     settings.stopWords = $('stopWords').value.split(/[,\n;]+/).map(w => N.normalizeText(w)).filter(Boolean);
     document.querySelectorAll('#suffixRows input').forEach(i => {
       if (i.disabled) return;

@@ -447,6 +447,174 @@
     });
   }
 
+  // ---------- Botón "Guardar y crear otra" (panel Nueva columna) ----------
+  // Pulsa el "Guardar" del portal, espera a que se cierre el panel y vuelve a pulsar
+  // el botón con el que se abrió (p. ej. "+ Nueva columna" o "Nuevo" → "Columna").
+  // Los botones del portal no se modifican: el nuestro va en una fila aparte debajo.
+  const SAVE_RE = [/^(guardar|save)$/];
+  const OPENER_SEL = 'button, [role="button"], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]';
+  const NEW_COLUMN_RE = /^\+?\s*(nueva columna|new column|agregar columna|add column)$/;
+  const NEW_RE = /^\+?\s*(nuevo|nueva|new|agregar|add)$/;
+  const COLUMN_ITEM_RE = /^(columna|column)$/;
+
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  async function waitFor(fn, timeout, every) {
+    const end = Date.now() + timeout;
+    for (;;) {
+      const v = fn();
+      if (v || Date.now() >= end) return v;
+      await sleep(every || 150);
+    }
+  }
+  const visible = el => !!el && el.isConnected && el.getClientRects().length > 0;
+  const btnDisabled = b => b.disabled || b.getAttribute('aria-disabled') === 'true';
+  const btnText = el => norm(el.textContent || '');
+  const btnLabel = el => norm(el.getAttribute('aria-label') || '');
+
+  function findSaveButton(c) {
+    return Array.from(c.querySelectorAll('button')).find(b =>
+      !b.closest('.ecija-sn') && visible(b) && (matches(btnText(b), SAVE_RE) || matches(btnLabel(b), SAVE_RE))) || null;
+  }
+
+  // Últimos clics del usuario fuera de los paneles (para saber qué abrió el panel).
+  let recentClicks = [];
+  let pendingOpener = null; // cadena usada en una reapertura automática
+  let activeSave = null;    // { aborted } mientras dura un "Guardar y crear otra"
+  document.addEventListener('click', e => {
+    if (!e.isTrusted || !e.target.closest) return;
+    if (e.target.closest('.ecija-sn')) return;
+    if (activeSave) activeSave.aborted = true; // el usuario ha tomado el control
+    const el = e.target.closest(OPENER_SEL);
+    if (!el || el.closest(CONTAINER_SEL)) return;
+    recentClicks.push({ el, role: el.getAttribute('role') || el.tagName.toLowerCase(), text: btnText(el), label: btnLabel(el), t: Date.now() });
+    recentClicks = recentClicks.slice(-2);
+  }, true);
+
+  function openerChain() {
+    if (pendingOpener && Date.now() - pendingOpener.t < 30000) {
+      const ch = pendingOpener.chain;
+      pendingOpener = null;
+      return ch;
+    }
+    const last = recentClicks[recentClicks.length - 1];
+    if (!last || Date.now() - last.t > 15000) return null;
+    const prev = recentClicks[recentClicks.length - 2];
+    if (/^menuitem/.test(last.role) && prev && last.t - prev.t < 15000) return [prev, last];
+    return [last];
+  }
+
+  function candidates() {
+    return Array.from(document.querySelectorAll(OPENER_SEL))
+      .filter(el => visible(el) && !btnDisabled(el) && !el.closest(CONTAINER_SEL));
+  }
+  function resolveStep(step) {
+    if (step.re) return candidates().find(el => step.re.test(btnText(el)) || step.re.test(btnLabel(el))) || null;
+    if (visible(step.el) && !btnDisabled(step.el)) return step.el;
+    return candidates().find(el => (el.getAttribute('role') || el.tagName.toLowerCase()) === step.role &&
+      btnText(el) === step.text && btnLabel(el) === step.label) || null;
+  }
+
+  async function runChain(chain) {
+    for (let i = 0; i < chain.length; i++) {
+      // El primer paso puede tardar: el portal refresca la lista tras guardar.
+      const el = await waitFor(() => resolveStep(chain[i]), i === 0 ? 8000 : 3000, 200);
+      if (!el) return false;
+      el.click();
+      if (i < chain.length - 1) await sleep(300);
+    }
+    return true;
+  }
+
+  async function reopenColumnPanel(chain) {
+    if (chain && await runChain(chain)) return chain;
+    // Sin registro del botón: "+ Nueva columna" o el menú "Nuevo" → "Columna".
+    if (resolveStep({ re: NEW_COLUMN_RE }) || !chain) {
+      const direct = [{ re: NEW_COLUMN_RE }];
+      if (await runChain(direct)) return direct;
+    }
+    const viaMenu = [{ re: NEW_RE }, { re: COLUMN_ITEM_RE }];
+    if (await runChain(viaMenu)) return viaMenu;
+    return null;
+  }
+
+  function toast(msg) {
+    const t = document.createElement('div');
+    t.className = 'ecija-toast';
+    t.setAttribute('role', 'alert');
+    t.textContent = msg;
+    document.body.append(t);
+    setTimeout(() => t.remove(), 5000);
+  }
+
+  const alertCount = c => Array.from(c.querySelectorAll('[role="alert"]')).filter(a => visible(a) && a.textContent.trim()).length;
+
+  async function saveAndNew(c, sn) {
+    const save = findSaveButton(c);
+    if (!save || btnDisabled(save) || sn.busy) return;
+    sn.busy = true;
+    sn.btn.textContent = 'Guardando…';
+    sn.btn.disabled = true;
+    const run = activeSave = { aborted: false };
+    const chain = sn.opener;
+    const alertsBefore = alertCount(c);
+    const start = Date.now();
+    save.click();
+
+    const result = await waitFor(() => {
+      if (run.aborted) return 'aborted';
+      if (!c.isConnected || !visible(save)) return 'closed';
+      if (Date.now() - start > 1200 && !btnDisabled(save) && alertCount(c) > alertsBefore) return 'error';
+      return null;
+    }, 30000, 200);
+
+    if (result !== 'closed') {
+      activeSave = null;
+      sn.busy = false;
+      if (sn.btn.isConnected) { sn.btn.textContent = SN_LABEL; sn.btn.disabled = btnDisabled(save); }
+      if (result === 'error') toast('ECIJA: la columna no se ha guardado. Revisa los errores del panel.');
+      else if (!result) toast('ECIJA: el panel sigue abierto tras 30 s; no se crea otra columna.');
+      return;
+    }
+    await sleep(400);
+    if (run.aborted) { activeSave = null; return; }
+    activeSave = null;
+    const used = await reopenColumnPanel(chain);
+    if (used) pendingOpener = { chain: used, t: Date.now() };
+    else toast('ECIJA: columna guardada, pero no se encuentra el botón «Nueva columna». Ábrelo a mano.');
+  }
+
+  const SN_LABEL = 'Guardar y crear otra';
+  const saveNewState = new WeakMap(); // contenedor -> { row, btn, busy, opener }
+
+  function ensureSaveAndNew(c) {
+    if (!settings.saveAndNew) return;
+    const save = findSaveButton(c);
+    if (!save) return;
+    let sn = saveNewState.get(c);
+    if (!sn) { sn = { busy: false, opener: openerChain() }; saveNewState.set(c, sn); }
+    if (!sn.row || !sn.row.isConnected) {
+      if (userBusyInCombo()) return; // no mover el layout mientras se filtra un desplegable
+      const group = save.parentElement;
+      if (!group) return;
+      sn.row = document.createElement('div');
+      sn.row.className = 'ecija-sn';
+      sn.btn = document.createElement('button');
+      sn.btn.type = 'button';
+      sn.btn.className = 'ecija-sn-btn';
+      sn.btn.textContent = sn.busy ? 'Guardando…' : SN_LABEL;
+      sn.btn.title = 'Guarda la columna y vuelve a abrir el panel de nueva columna';
+      sn.btn.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        saveAndNew(c, sn);
+      });
+      sn.row.append(sn.btn);
+      group.after(sn.row);
+    }
+    const dis = sn.busy || btnDisabled(save);
+    if (sn.btn.disabled !== dis) sn.btn.disabled = dis;
+  }
+
   // ---------- Procesado de paneles ----------
   const prefixedDisplays = new WeakSet();
 
@@ -458,6 +626,7 @@
     if (!schema) { expandAdvanced(c); return; }
     if (isLocked(schema)) { dropState(schema); dropState(relInput); return; } // columna existente
 
+    ensureSaveAndNew(c);
     manageSchema(schema, display, type, rawType, proj);
 
     if (relInput && type && type.key === 'lookup') {
@@ -554,8 +723,10 @@
     for (const [input] of states) if (!input.isConnected) dropState(input);
     if (!settings.enabled) {
       for (const [input] of states) dropState(input);
+      document.querySelectorAll('.ecija-sn').forEach(r => r.remove());
       return;
     }
+    if (!settings.saveAndNew) document.querySelectorAll('.ecija-sn').forEach(r => r.remove());
     const proj = N.resolveProject(projects, N.parseContext(location.href));
     const containers = new Set();
     findControls(document.body, LBL.display, INPUT_SEL).forEach(el => containers.add(containerOf(el)));
