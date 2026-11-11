@@ -58,8 +58,8 @@ relación para que no se repita:
 
 El aviso marca también si el nombre supera los 100 caracteres de Dataverse.
 
-**Guardar y crear otra.** Aparece en una fila propia bajo los botones del panel de nueva
-columna y se desactiva mientras *Guardar* lo esté. Si el portal muestra un error, el panel
+**Guardar y crear otra.** Aparece entre *Guardar* y *Cancelar*, con el mismo aspecto que
+los botones del portal, y se desactiva mientras *Guardar* lo esté. Si el portal muestra un error, el panel
 se queda abierto y no se crea otra. Cualquier clic tuyo mientras guarda cancela la
 reapertura. Se puede ocultar desde la configuración.
 

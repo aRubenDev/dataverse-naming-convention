@@ -450,7 +450,8 @@
   // ---------- Botón "Guardar y crear otra" (panel Nueva columna) ----------
   // Pulsa el "Guardar" del portal, espera a que se cierre el panel y vuelve a pulsar
   // el botón con el que se abrió (p. ej. "+ Nueva columna" o "Nuevo" → "Columna").
-  // Los botones del portal no se modifican: el nuestro va en una fila aparte debajo.
+  // Los botones del portal no se modifican: el nuestro es una copia visual de Cancelar
+  // colocada entre Guardar y Cancelar.
   const SAVE_RE = [/^(guardar|save)$/];
   const OPENER_SEL = 'button, [role="button"], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]';
   const NEW_COLUMN_RE = /^\+?\s*(nueva columna|new column|agregar columna|add column)$/;
@@ -552,8 +553,9 @@
     const save = findSaveButton(c);
     if (!save || btnDisabled(save) || sn.busy) return;
     sn.busy = true;
-    sn.btn.textContent = 'Guardando…';
+    setSnLabel(sn.btn, 'Guardando…');
     sn.btn.disabled = true;
+    sn.btn.classList.add('ecija-sn-disabled');
     const run = activeSave = { aborted: false };
     const chain = sn.opener;
     const alertsBefore = alertCount(c);
@@ -570,7 +572,11 @@
     if (result !== 'closed') {
       activeSave = null;
       sn.busy = false;
-      if (sn.btn.isConnected) { sn.btn.textContent = SN_LABEL; sn.btn.disabled = btnDisabled(save); }
+      if (sn.btn.isConnected) {
+        setSnLabel(sn.btn, SN_LABEL);
+        sn.btn.disabled = btnDisabled(save);
+        sn.btn.classList.toggle('ecija-sn-disabled', sn.btn.disabled);
+      }
       if (result === 'error') toast('ECIJA: la columna no se ha guardado. Revisa los errores del panel.');
       else if (!result) toast('ECIJA: el panel sigue abierto tras 30 s; no se crea otra columna.');
       return;
@@ -584,7 +590,7 @@
   }
 
   const SN_LABEL = 'Guardar y crear otra';
-  const saveNewState = new WeakMap(); // contenedor -> { row, btn, busy, opener }
+  const saveNewState = new WeakMap(); // contenedor -> { btn, busy, opener }
 
   function ensureSaveAndNew(c) {
     if (!settings.saveAndNew) return;
@@ -592,27 +598,58 @@
     if (!save) return;
     let sn = saveNewState.get(c);
     if (!sn) { sn = { busy: false, opener: openerChain() }; saveNewState.set(c, sn); }
-    if (!sn.row || !sn.row.isConnected) {
+    if (!sn.btn || !sn.btn.isConnected) {
       if (userBusyInCombo()) return; // no mover el layout mientras se filtra un desplegable
       const group = save.parentElement;
       if (!group) return;
-      sn.row = document.createElement('div');
-      sn.row.className = 'ecija-sn';
-      sn.btn = document.createElement('button');
-      sn.btn.type = 'button';
-      sn.btn.className = 'ecija-sn-btn';
-      sn.btn.textContent = sn.busy ? 'Guardando…' : SN_LABEL;
-      sn.btn.title = 'Guarda la columna y vuelve a abrir el panel de nueva columna';
+      const cancel = Array.from(group.children).find(b => b.tagName === 'BUTTON' && b !== save &&
+        matches(btnText(b), [/^(cancelar|cancel)$/]));
+      sn.btn = makeSaveNewButton(cancel);
       sn.btn.addEventListener('click', e => {
         e.preventDefault();
         e.stopPropagation();
         saveAndNew(c, sn);
       });
-      sn.row.append(sn.btn);
-      group.after(sn.row);
+      setSnLabel(sn.btn, sn.busy ? 'Guardando…' : SN_LABEL);
+      // Al lado de Guardar, en la misma fila; sin Cancelar que copiar, en fila aparte.
+      if (cancel) save.after(sn.btn);
+      else {
+        const row = document.createElement('div');
+        row.className = 'ecija-sn ecija-sn-row';
+        row.append(sn.btn);
+        group.after(row);
+      }
     }
     const dis = sn.busy || btnDisabled(save);
-    if (sn.btn.disabled !== dis) sn.btn.disabled = dis;
+    if (sn.btn.disabled !== dis) {
+      sn.btn.disabled = dis;
+      sn.btn.classList.toggle('ecija-sn-disabled', dis);
+    }
+  }
+
+  /** Copia visual del botón secundario del portal (mismas clases Fluent), sin sus manejadores. */
+  function makeSaveNewButton(template) {
+    let b;
+    if (template) {
+      b = template.cloneNode(true);
+      b.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+      ['id', 'aria-label', 'aria-describedby', 'aria-labelledby', 'data-is-focusable', 'data-automation-id']
+        .forEach(a => b.removeAttribute(a));
+      b.classList.add('ecija-sn');
+    } else {
+      b = document.createElement('button');
+      b.className = 'ecija-sn-btn';
+    }
+    b.type = 'button';
+    b.title = 'Guarda la columna y vuelve a abrir el panel de nueva columna';
+    return b;
+  }
+
+  /** Cambia el texto en el nodo de texto del botón, conservando su estructura. */
+  function setSnLabel(b, text) {
+    const leaf = Array.from(b.querySelectorAll('*')).reverse()
+      .find(el => !el.children.length && el.textContent.trim()) || null;
+    if (leaf) leaf.textContent = text; else b.textContent = text;
   }
 
   // ---------- Procesado de paneles ----------

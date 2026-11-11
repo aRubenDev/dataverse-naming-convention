@@ -43,8 +43,12 @@
 }
 .ecija-nb-btn:hover { background: rgba(0, 0, 0, .06); }
 
-/* Fila propia bajo los botones del panel: no altera los botones del portal. */
-.ecija-sn {
+/* Copia del botón Cancelar del portal: solo se añade el aspecto desactivado
+   (las clases Fluent de "deshabilitado" no se copian). */
+.ecija-sn.ecija-sn-disabled { opacity: .45; cursor: default; pointer-events: none; }
+
+/* Alternativa si no hay botón que copiar: fila propia bajo los botones. */
+.ecija-sn-row {
   display: flex;
   flex-basis: 100%;
   width: 100%;
