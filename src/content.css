@@ -46,6 +46,8 @@
 /* Copia del botón Cancelar del portal: solo se añade el aspecto desactivado
    (las clases Fluent de "deshabilitado" no se copian). */
 .ecija-sn.ecija-sn-disabled { opacity: .45; cursor: default; pointer-events: none; }
+/* Separación con el botón siguiente (Cancelar). */
+button.ecija-sn { margin-right: 8px; }
 
 /* Alternativa si no hay botón que copiar: fila propia bajo los botones. */
 .ecija-sn-row {
