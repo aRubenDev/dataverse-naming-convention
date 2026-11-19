@@ -179,6 +179,25 @@
     return issues;
   }
 
+  /**
+   * Quita una repetición completa del texto (el portal a veces duplica el nombre en un
+   * nodo oculto): "CuentaCuenta", "Cuenta Cuenta", "Tipo órgano Tipo órgano" → la mitad.
+   */
+  function dedupeRepeated(text) {
+    const t = String(text == null ? '' : text).trim();
+    const w = t.split(/\s+/);
+    if (w.length > 1 && w.length % 2 === 0) {
+      const h = w.length / 2;
+      if (normalizeText(w.slice(0, h).join(' ')) === normalizeText(w.slice(h).join(' '))) return w.slice(0, h).join(' ');
+    }
+    // Copias pegadas ("CuentaCuenta"); mínimo 3 letras por mitad para no partir palabras como "Papa".
+    if (t.length >= 6 && t.length % 2 === 0) {
+      const a = t.slice(0, t.length / 2), b = t.slice(t.length / 2);
+      if (normalizeText(a) === normalizeText(b)) return a.trim();
+    }
+    return t;
+  }
+
   /** "Punto de orden del día" -> "PuntoOrdenDia" (sin tildes ni palabras vacías). */
   function toPascal(text, stopWords) {
     return toSnake(text, stopWords).split('_').filter(Boolean)
@@ -419,7 +438,7 @@
   const api = {
     DEFAULT_STOP_WORDS, DEFAULT_FORBIDDEN_COLUMNS, CATEGORIES, CHOICE_TYPE,
     stripAccents, normalizeText, detectType, detectBehavior, toSnake, cleanSuffix, cleanPrefix,
-    suffixFor, buildName, validate, toPascal, patternLead,
+    suffixFor, buildName, validate, toPascal, dedupeRepeated, patternLead,
     buildPrimaryColumnName, validatePrimaryColumn, buildTableName, validateTableName, buildSolutionName, validateSolutionName, relationshipToken, buildRelationshipName, RELATIONSHIP_MAX,
     parsePortalRelationshipDefault, validateRelationship,
     defaultSettings, mergeSettings, settingsFromStandard,

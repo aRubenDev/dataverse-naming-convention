@@ -116,6 +116,17 @@ t('columna principal y solución', () => {
   assert.strictEqual(N.buildSolutionName({ displayName: 'Actas', settings: s }), 'SOL_Actas');
 });
 
+t('nombre de tabla duplicado por el portal', () => {
+  const d = N.dedupeRepeated;
+  assert.strictEqual(d('CuentaCuenta'), 'Cuenta');
+  assert.strictEqual(d('Cuentacuenta'), 'Cuenta');
+  assert.strictEqual(d('Cuenta Cuenta'), 'Cuenta');
+  assert.strictEqual(d('Tipo órganoTipo órgano'), 'Tipo órgano');
+  assert.strictEqual(d('Tipo órgano Tipo órgano'), 'Tipo órgano');
+  for (const x of ['Cuenta', 'Papa', 'Papá', 'Acta', 'Tipo de movimiento', 'Forma jurídica']) assert.strictEqual(d(x), x);
+  assert.strictEqual(N.relationshipToken({ display: d('CuentaCuenta'), settings: S }), 'Cuenta');
+});
+
 t('contexto y proyecto', () => {
   const ctx = N.parseContext('https://make.powerapps.com/environments/Default-abc/solutions/11111111-2222-3333-4444-555555555555/objects/all');
   assert.strictEqual(ctx.envId, 'default-abc');

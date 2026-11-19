@@ -272,7 +272,7 @@
   const tableNameCache = {};
   function currentTableName(c) {
     const ctl = findControl(c, LBL.currentTable, INPUT_SEL + ', ' + TYPE_SEL);
-    const fromPanel = readControlText(ctl).trim();
+    const fromPanel = N.dedupeRepeated(readControlText(ctl).trim());
     if (fromPanel) return { name: fromPanel, source: 'panel' };
 
     const key = entityKey();
@@ -280,9 +280,12 @@
     // Fuera chevrones, iconos de fuente (zona de uso privado) y caracteres invisibles.
     const clean = t => (t || '').replace(/[›»>/\\|\u200b-\u200f\u2060\ufeff\ue000-\uf8ff]/g, ' ').replace(/\s+/g, ' ').trim();
     const outside = el => !el.closest(CONTAINER_SEL);
+    // Texto visible del elemento (innerText omite las copias ocultas) y sin repeticiones:
+    // "CuentaCuenta" / "Cuenta Cuenta" → "Cuenta" (copia para lector de pantalla o tooltip).
+    const visibleText = el => N.dedupeRepeated(clean(el.innerText != null && el.innerText !== '' ? el.innerText : el.textContent));
     const crumbs = Array.from(document.querySelectorAll(
       'nav[aria-label*="breadcrumb" i] li, nav[aria-label*="ruta" i] li, .fui-Breadcrumb li, .ms-Breadcrumb-listItem, [class*="breadcrumb" i] li'))
-      .filter(outside).map(el => clean(el.textContent))
+      .filter(outside).map(visibleText)
       .filter(t => t && t.length < 80 && !isGenericCrumb(t));
     if (crumbs.length) {
       const name = crumbs[crumbs.length - 1];
@@ -292,10 +295,10 @@
     if (key && tableNameCache[key]) return { name: tableNameCache[key], source: 'ruta de navegación' };
 
     const h1 = Array.from(document.querySelectorAll('h1, [role="heading"][aria-level="1"]')).filter(outside)
-      .map(el => clean(el.textContent)).find(t => t && t.length < 80 && !isGenericCrumb(t));
+      .map(visibleText).find(t => t && t.length < 80 && !isGenericCrumb(t));
     if (h1) return { name: h1, source: 'cabecera' };
 
-    const part = document.title.split(/\s[-|–]\s/).map(clean)
+    const part = document.title.split(/\s[-|–]\s/).map(t => N.dedupeRepeated(clean(t)))
       .find(t => t && !isGenericCrumb(t) && !/power apps|microsoft/i.test(t));
     if (part) return { name: part, source: 'título de la página' };
     return null;
