@@ -28,6 +28,11 @@ t('detección de tipos ES/EN → sufijo del estándar', () => {
   };
   for (const [txt, suf] of Object.entries(cases)) assert.strictEqual(sx(txt), suf, txt);
   assert.strictEqual(N.detectType('xyz'), null);
+  // El desplegable puede mostrar la categoría y el subtipo a la vez
+  assert.strictEqual(sx('Fecha y hora Solo fecha'), '_date');
+  assert.strictEqual(sx('Fecha y hora › Solo fecha'), '_date');
+  assert.strictEqual(sx('Date and time Date only'), '_date');
+  assert.strictEqual(sx('Fecha y hora Fecha y hora'), '_datetime');
 });
 
 t('comportamiento calculado / acumulativo', () => {

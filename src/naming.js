@@ -61,8 +61,10 @@
     [/numero entero|whole number|\bentero\b/, 'wholenumber', 'Número entero', 'integer'],
     [/decimal/, 'decimal', 'Decimal', 'decimal'],
     [/flotante|float/, 'float', 'Flotante', 'float'],
+    // "Solo fecha" antes que "Fecha y hora": el portal puede mostrar ambos textos a la vez
+    // (categoría "Fecha y hora" › subtipo "Solo fecha").
+    [/solo fecha|date only|dateonly/, 'dateonly', 'Solo fecha', 'date'],
     [/fecha y hora|date and time/, 'datetime', 'Fecha y hora', 'datetime'],
-    [/solo fecha|date only/, 'dateonly', 'Solo fecha', 'date'],
     [/si\s*\/\s*no|yes\s*\/\s*no|dos opciones|two options|boolean/, 'boolean', 'Sí/No', 'boolean'],
     [/opciones|choices|elecciones|seleccion multiple|multi ?select/, 'choices', 'Opciones (múltiple)', 'multichoice'],
     [/opcion|choice|eleccion|option ?set|picklist/, 'choice', 'Opción', 'choice'],

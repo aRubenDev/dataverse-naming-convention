@@ -49,6 +49,7 @@
     choiceSchema: [/^name$/, /^nombre$/, /^schema name\b/, /^nombre (de|del) esquema\b/, /^logical name\b/, /^nombre logico\b/],
     dataType: [/^data type\b/, /^tipo de datos?\b/],
     behavior: [/^behavior\b/, /^behaviour\b/, /^comportamiento\b/],
+    format: [/^format\b/, /^formato\b/],
     advanced: [/^advanced options\b/, /^opciones avanzadas\b/, /^mas opciones\b/],
     relName: [/^nombre de (la )?relacion\b/, /^relationship (schema )?name\b/, /^nombre de esquema de (la )?relacion\b/],
     relatedTable: [/^tabla relacionada\b/, /^related table\b/],
@@ -741,6 +742,12 @@
     // Comportamiento calculado / acumulativo: su sufijo sustituye al del tipo (importe_calc).
     const behaviorCtl = findControls(c, LBL.behavior, TYPE_SEL).find(el => el !== dataType);
     const behavior = behaviorCtl ? N.detectBehavior(readControlText(behaviorCtl)) : null;
+    // Fecha y hora con formato o comportamiento "Solo fecha" → columna de solo fecha (_date).
+    if (type && type.category === 'datetime') {
+      const dateOnly = findControls(c, LBL.format, TYPE_SEL).concat(behaviorCtl ? [behaviorCtl] : [])
+        .some(el => el !== dataType && /solo fecha|date only/.test(norm(readControlText(el))));
+      if (dateOnly) type = { key: 'dateonly', label: 'Solo fecha', category: 'date' };
+    }
     if (type && behavior && type.category !== 'lookup') {
       type = Object.assign({}, type, { category: behavior, label: type.label + (behavior === 'calculated' ? ' calculada' : ' acumulativa') });
     }
