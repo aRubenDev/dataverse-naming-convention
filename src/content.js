@@ -61,7 +61,10 @@
   const SOLUTION_NAME = [/^name$/, /^nombre$/, /^nombre unico\b/, /^unique name\b/];
   const CHOICE_HEADING = /(new choice|nueva opcion|nueva eleccion|nuevo conjunto de opciones|global choice|opcion global|^choice$|^opcion$|^eleccion$)/;
   const NOT_CHOICE_HEADING = /(tabla|table|columna|column|editar|edit|relacion|relationship)/;
-  const GENERIC_CRUMB = /^(tablas?|tables?|columnas?|columns?|relaciones|relationships?|claves|keys|formularios|forms|vistas|views|datos|data|soluciones|solutions?|objetos|objects|todos?|all|power apps|inicio|home|campos|fields|reglas de negocio|business rules|paneles|dashboards|graficos|charts|comandos|commands|mensajes|messages|informacion general|overview|propiedades|properties|configuracion|settings|herramientas|tools|esquema|schema|mas|more|\W*)$/;
+  const GENERIC_CRUMB = /^(tablas?|tables?|columnas?|columns?|relaciones|relationships?|claves|keys|formularios|forms|vistas|views|datos|data|soluciones|solutions?|objetos|objects|todos?|all|power apps|inicio|home|campos|fields|reglas de negocio|business rules|paneles|dashboards|graficos|charts|comandos|commands|mensajes|messages|informacion general|overview|propiedades|properties|configuracion|settings|herramientas|tools|esquema|schema|mas|more|columnas y datos|columns and data|datos y columnas|nueva columna|new column|\W*)$/;
+  /** ¿Es el nombre de una sección del portal y no de una tabla? Ignora iconos, invisibles y contadores "(42)". */
+  const isGenericCrumb = t => GENERIC_CRUMB.test(norm(t).replace(/\(\s*\d+\s*\)/g, ' ')
+    .replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim());
 
   const INPUT_SEL = 'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea';
   const TYPE_SEL = 'button, [role="combobox"], select, input[role="combobox"]';
@@ -274,12 +277,13 @@
 
     const key = entityKey();
 
-    const clean = t => (t || '').replace(/[›»>/\\|]/g, ' ').replace(/\s+/g, ' ').trim();
+    // Fuera chevrones, iconos de fuente (zona de uso privado) y caracteres invisibles.
+    const clean = t => (t || '').replace(/[›»>/\\|\u200b-\u200f\u2060\ufeff\ue000-\uf8ff]/g, ' ').replace(/\s+/g, ' ').trim();
     const outside = el => !el.closest(CONTAINER_SEL);
     const crumbs = Array.from(document.querySelectorAll(
       'nav[aria-label*="breadcrumb" i] li, nav[aria-label*="ruta" i] li, .fui-Breadcrumb li, .ms-Breadcrumb-listItem, [class*="breadcrumb" i] li'))
       .filter(outside).map(el => clean(el.textContent))
-      .filter(t => t && t.length < 80 && !GENERIC_CRUMB.test(norm(t)));
+      .filter(t => t && t.length < 80 && !isGenericCrumb(t));
     if (crumbs.length) {
       const name = crumbs[crumbs.length - 1];
       if (key) tableNameCache[key] = name;
@@ -288,11 +292,11 @@
     if (key && tableNameCache[key]) return { name: tableNameCache[key], source: 'ruta de navegación' };
 
     const h1 = Array.from(document.querySelectorAll('h1, [role="heading"][aria-level="1"]')).filter(outside)
-      .map(el => clean(el.textContent)).find(t => t && t.length < 80 && !GENERIC_CRUMB.test(norm(t)));
+      .map(el => clean(el.textContent)).find(t => t && t.length < 80 && !isGenericCrumb(t));
     if (h1) return { name: h1, source: 'cabecera' };
 
     const part = document.title.split(/\s[-|–]\s/).map(clean)
-      .find(t => t && !GENERIC_CRUMB.test(norm(t)) && !/power apps|microsoft/i.test(t));
+      .find(t => t && !isGenericCrumb(t) && !/power apps|microsoft/i.test(t));
     if (part) return { name: part, source: 'título de la página' };
     return null;
   }
