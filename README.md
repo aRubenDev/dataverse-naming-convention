@@ -106,6 +106,33 @@ Conversión: PascalCase, sin tildes ni ñ, sin caracteres especiales y sin palab
 (`Fecha de Alta del Cliente` → `FechaAltaCliente`). El nombre lógico es el mismo en
 minúsculas (`ecj_fechaaltacliente_date`); eso lo hace Dataverse.
 
+## Resaltado de la lista de columnas
+
+En **Tablas → <tabla> → Columnas** cada fila se marca según lo que muestra la propia lista:
+
+| Marca | Significado | Cómo se detecta |
+|---|---|---|
+| Barra roja | Obligatoria | Columna *Requerido / Obligatorio* de la vista («Obligatorio para la empresa», «Requerido para el sistema», «Sí») |
+| Barra azul | Recomendada | «Recomendado para la empresa» |
+| Fondo verde | Mía | El nombre lógico empieza por el **prefijo del publicador** configurado en el popup |
+| Fondo lila | De otro publicador | Columna *Personalizado* = Sí, o nombre con prefijo si esa columna no está en la vista |
+| Atenuada | Estándar | *Personalizado* = No, o nombre sin prefijo (`createdon`, `ownerid`…) |
+| Borde ámbar discontinuo | No cumple el estándar | Mía y el nombre no termina en el sufijo de su tipo, o es una columna de estado prohibida. El motivo sale al pasar el ratón |
+
+Dataverse no guarda quién creó cada columna, así que «mía» significa «con el prefijo de mi
+publicador». La lista del portal no distingue siempre *Solo fecha* de *Fecha y hora* ni muestra
+el comportamiento calculado/acumulativo, así que en esos casos se aceptan los sufijos de la
+familia (`_date`/`_datetime`, `_calc`, `_rollup`, `_formula`). Las columnas `_base` (que crea
+Dataverse para las de moneda) y la principal `IDNombreTabla` no se revisan.
+
+La **leyenda** flotante (abajo a la derecha) permite activar o desactivar cada marca, se puede
+plegar y recuerda la elección en este navegador. Los recuentos son de las filas cargadas: la
+lista carga más al desplazarse. Para que salgan las obligatorias, la columna *Requerido* tiene
+que estar visible en la vista de la lista. Se desactiva entera en **Configuración avanzada**.
+
+Si no marca nada, ejecuta [`tools/diagnostico-columnas.js`](tools/diagnostico-columnas.js) en la
+consola con la lista abierta y comparte el resultado.
+
 ## Si algo no se detecta
 
 Ejecuta [`tools/diagnostico.js`](tools/diagnostico.js) en la consola (F12) con el panel

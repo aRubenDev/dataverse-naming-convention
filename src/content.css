@@ -83,3 +83,48 @@ button.ecija-sn { margin-right: 8px; }
   box-shadow: 0 4px 16px rgba(0, 0, 0, .2);
   font: 13px/18px "Segoe UI", system-ui, sans-serif;
 }
+
+/* ---------- Resaltado de la lista de columnas (src/columns.js) ---------- */
+html.ecija-hl-std [data-ecija-col~="std"] { opacity: .5; }
+html.ecija-hl-mine [data-ecija-col~="mine"] { background-color: #e9f6ec !important; }
+html.ecija-hl-custom [data-ecija-col~="custom"] { background-color: #f1ecfa !important; }
+html.ecija-hl-req [data-ecija-col~="req"] { box-shadow: inset 4px 0 0 #d13438; }
+html.ecija-hl-rec [data-ecija-col~="rec"] { box-shadow: inset 4px 0 0 #2b78d0; }
+html.ecija-hl-warn [data-ecija-col~="warn"] { outline: 2px dashed #c98a00; outline-offset: -2px; }
+
+.ecija-cl {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1000;
+  width: 250px;
+  padding: 8px 10px;
+  border: 1px solid #d1d1d1;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .14);
+  font: 12px/1.4 "Segoe UI", system-ui, sans-serif;
+  color: #242424;
+}
+.ecija-cl-toggle {
+  display: block;
+  width: 100%;
+  padding: 0 0 4px;
+  border: 0;
+  background: none;
+  font: 600 12px/18px "Segoe UI", system-ui, sans-serif;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ecija-cl-item { display: flex; align-items: center; gap: 6px; padding: 2px 0; cursor: pointer; }
+.ecija-cl-item input { margin: 0; }
+.ecija-cl-swatch { flex: none; width: 14px; height: 14px; border-radius: 3px; border: 1px solid #c8c8c8; background: #fff; }
+.ecija-cl-item[data-tag="req"] .ecija-cl-swatch { box-shadow: inset 4px 0 0 #d13438; }
+.ecija-cl-item[data-tag="rec"] .ecija-cl-swatch { box-shadow: inset 4px 0 0 #2b78d0; }
+.ecija-cl-item[data-tag="mine"] .ecija-cl-swatch { background: #e9f6ec; }
+.ecija-cl-item[data-tag="custom"] .ecija-cl-swatch { background: #f1ecfa; }
+.ecija-cl-item[data-tag="std"] .ecija-cl-swatch { opacity: .5; background: #f0f0f0; }
+.ecija-cl-item[data-tag="warn"] .ecija-cl-swatch { border: 2px dashed #c98a00; }
+.ecija-cl-n { margin-left: auto; color: #616161; font-variant-numeric: tabular-nums; }
+.ecija-cl-note { margin-top: 4px; color: #616161; font-size: 11px; }

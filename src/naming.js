@@ -365,6 +365,7 @@
       autoExpand: true,
       showBadges: true,
       saveAndNew: true,
+      highlightColumns: true,
       version: SETTINGS_VERSION,
       suffixes,
       stopWords: DEFAULT_STOP_WORDS.slice(),
@@ -435,6 +436,60 @@
     };
   }
 
+  // ---------- Resaltado de la lista de columnas de una tabla ----------
+  // Sufijos que valen para una misma familia de tipos: la lista del portal no siempre
+  // distingue "Solo fecha" de "Fecha y hora", ni muestra el comportamiento calculado/acumulativo.
+  const SUFFIX_FAMILY = { date: ['date', 'datetime'], datetime: ['date', 'datetime'] };
+  const BEHAVIOR_CATEGORIES = ['calculated', 'rollup', 'formula'];
+
+  /**
+   * Clasifica una fila de la lista de columnas a partir de los textos de sus celdas.
+   *   row: { name: nombre lógico, type: texto del tipo de datos, required: texto de la celda
+   *          "Obligatorio/Requerido", custom: texto de la celda "Personalizado" }
+   *   ctx: { publisherPrefix: 'ecija_', settings }
+   * Devuelve { tags: ['req'|'rec'|'mine'|'custom'|'std'|'warn'], issues: [texto] }.
+   */
+  function classifyColumn(row, ctx) {
+    const name = String(row.name || '').trim().toLowerCase();
+    const req = normalizeText(row.required);
+    const custom = normalizeText(row.custom);
+    const pub = String((ctx && ctx.publisherPrefix) || '').toLowerCase();
+    const settings = (ctx && ctx.settings) || mergeSettings({});
+    const yes = t => /^(si|yes|true|verdadero)$/.test(t);
+    const tags = [];
+    const issues = [];
+
+    // Obligatoria / recomendada
+    if (req) {
+      if (/recomend|recommended/.test(req)) tags.push('rec');
+      // Valores como "Obligatorio para la empresa" o, si la columna es Sí/No, "Sí"
+      else if (yes(req) || (/obligatori|requerid|required|necesari/.test(req) && !/^no\b|opcional|optional|not required/.test(req))) tags.push('req');
+    }
+
+    // Propia (prefijo del publicador), personalizada de otro publicador o estándar
+    const prefixed = /^[a-z0-9]+_/.test(name);
+    if (pub && name.startsWith(pub)) tags.push('mine');
+    // Sin columna «Personalizado» en la vista: con prefijo = personalizada; sin prefijo (createdon…) = estándar
+    else if (custom ? yes(custom) : prefixed) tags.push('custom');
+    else if (name) tags.push('std');
+
+    // Cumplimiento del sufijo (solo en las propias; sin el comportamiento visible, se aceptan _calc/_rollup/_formula)
+    if (tags.includes('mine')) {
+      const core = name.slice(pub.length);
+      const t = detectType(row.type);
+      const generated = /_base$/.test(name); // columnas que crea Dataverse (importe en la divisa base)
+      const primary = /^id[a-z0-9]*$/.test(core); // columna principal IDNombreTabla: sin sufijo
+      if (t && !generated && !primary) {
+        const ok = (SUFFIX_FAMILY[t.category] || [t.category]).concat(BEHAVIOR_CATEGORIES)
+          .map(c => suffixFor(c, settings)).filter(Boolean);
+        if (!ok.some(sx => core.endsWith(sx))) issues.push('No termina en ' + suffixFor(t.category, settings) + ' (' + t.label + ')');
+      }
+      if ((settings.forbiddenColumns || []).includes(core)) issues.push('Columna de estado propia no permitida');
+      if (issues.length) tags.push('warn');
+    }
+    return { tags, issues };
+  }
+
   const api = {
     DEFAULT_STOP_WORDS, DEFAULT_FORBIDDEN_COLUMNS, CATEGORIES, CHOICE_TYPE,
     stripAccents, normalizeText, detectType, detectBehavior, toSnake, cleanSuffix, cleanPrefix,
@@ -442,7 +497,7 @@
     buildPrimaryColumnName, validatePrimaryColumn, buildTableName, validateTableName, buildSolutionName, validateSolutionName, relationshipToken, buildRelationshipName, RELATIONSHIP_MAX,
     parsePortalRelationshipDefault, validateRelationship,
     defaultSettings, mergeSettings, settingsFromStandard,
-    parseContext, resolveProject
+    parseContext, resolveProject, classifyColumn
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

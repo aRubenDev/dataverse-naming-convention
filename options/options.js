@@ -17,6 +17,7 @@
     $('autoExpand').checked = settings.autoExpand;
     $('showBadges').checked = settings.showBadges;
     $('saveAndNew').checked = settings.saveAndNew;
+    $('highlightColumns').checked = settings.highlightColumns;
     $('stopWords').value = settings.stopWords.join(', ');
     $('forbiddenColumns').value = settings.forbiddenColumns.join(', ');
     $('primaryColumnPattern').value = settings.primaryColumnPattern;
@@ -79,6 +80,7 @@
     settings.autoExpand = $('autoExpand').checked;
     settings.showBadges = $('showBadges').checked;
     settings.saveAndNew = $('saveAndNew').checked;
+    settings.highlightColumns = $('highlightColumns').checked;
     settings.stopWords = $('stopWords').value.split(/[,\n;]+/).map(w => N.normalizeText(w)).filter(Boolean);
     settings.forbiddenColumns = $('forbiddenColumns').value.split(/[,\n;\s]+/).map(w => w.toLowerCase().trim()).filter(Boolean);
     const d = N.defaultSettings();

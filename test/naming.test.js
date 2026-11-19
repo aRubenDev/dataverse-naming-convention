@@ -178,4 +178,26 @@ t('lookup «Sociedad» en Accion hacia Cuenta', () => {
   assert.ok(N.validateRelationship(long, { type: '1N', pub: 'ecj_' })[0].includes('100'));
 });
 
+t('resaltado de la lista de columnas', () => {
+  const ctx = { publisherPrefix: 'ecija_', settings: S };
+  const tags = row => N.classifyColumn(row, ctx).tags;
+  assert.deepStrictEqual(tags({ name: 'ecija_razonsocial_txt', type: 'Texto', required: 'Obligatorio para la empresa' }), ['req', 'mine']);
+  assert.deepStrictEqual(tags({ name: 'ecija_cif_txt', type: 'Una línea de texto', required: 'Opcional' }), ['mine']);
+  assert.deepStrictEqual(tags({ name: 'ecija_email_txt', type: 'Texto', required: 'Recomendado para la empresa' }), ['rec', 'mine']);
+  assert.deepStrictEqual(tags({ name: 'ecija_tomo', type: 'Texto', required: 'Sí' }), ['req', 'mine', 'warn']);
+  assert.ok(N.classifyColumn({ name: 'ecija_tomo', type: 'Texto' }, ctx).issues[0].includes('_txt'));
+  assert.deepStrictEqual(tags({ name: 'createdon', type: 'Fecha y hora', required: 'Requerido para el sistema', custom: 'No' }), ['req', 'std']);
+  assert.deepStrictEqual(tags({ name: 'msdyn_campo', type: 'Texto', custom: 'Sí' }), ['custom']);
+  assert.deepStrictEqual(tags({ name: 'cr7a1_campo', type: 'Texto' }), ['custom']); // sin columna «Personalizado»: el prefijo basta
+  assert.deepStrictEqual(tags({ name: 'msdyn_campo', type: 'Texto', custom: 'No' }), ['std']);
+  // Fechas: la lista puede no distinguir "Solo fecha" de "Fecha y hora"; _base e ID principal no llevan sufijo
+  assert.deepStrictEqual(tags({ name: 'ecija_fechaalta_date', type: 'Fecha y hora' }), ['mine']);
+  assert.deepStrictEqual(tags({ name: 'ecija_capital_currency_base', type: 'Moneda' }), ['mine']);
+  assert.deepStrictEqual(tags({ name: 'ecija_idsociedad', type: 'Autonumérico' }), ['mine']);
+  assert.deepStrictEqual(tags({ name: 'ecija_total_rollup', type: 'Moneda' }), ['mine']);
+  assert.deepStrictEqual(tags({ name: 'ecija_estado_choice', type: 'Opción' }), ['mine', 'warn']);
+  // Sin prefijo configurado: las que tienen prefijo cuentan como personalizadas
+  assert.deepStrictEqual(N.classifyColumn({ name: 'ecija_cif_txt', type: 'Texto' }, { publisherPrefix: '', settings: S }).tags, ['custom']);
+});
+
 console.log(`\n${ok} grupos de tests OK`);
