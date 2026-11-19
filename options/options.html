@@ -31,7 +31,13 @@
         <thead><tr><th>Categoría</th><th>Tipos de Dataverse</th><th>Sufijo</th></tr></thead>
         <tbody id="suffixRows"></tbody>
       </table>
-      <p class="hint">El sufijo de Choice es fijo (<code>_choice</code>) por estándar; puedes editarlo a mano en cada creación.</p>
+      <p class="hint">Valores del estándar de validaciones ECIJA. Con comportamiento calculado o acumulativo se usa <code>_calc</code> / <code>_rollup</code> en lugar del sufijo del tipo.</p>
+    </section>
+
+    <section class="card">
+      <h2>Columnas de estado prohibidas</h2>
+      <textarea id="forbiddenColumns" rows="2" class="mono"></textarea>
+      <p class="hint">Separadas por comas. Si el nombre lógico coincide, se avisa de usar <em>Estado</em> y <em>Razón para el estado</em> nativos.</p>
     </section>
 
     <section class="card">
@@ -58,7 +64,7 @@
 
     <section class="card">
       <h2>Copia de seguridad</h2>
-      <p class="hint">Comparte la configuración con el equipo exportándola a JSON.</p>
+      <p class="hint">Comparte la configuración con el equipo exportándola a JSON. También se puede importar el JSON de validaciones ECIJA (<code>dataverse.columnNaming.suffixes</code>, <code>globalOptionSetNaming</code>, <code>entityStateManagement.forbiddenColumns</code>); el resto de reglas se ignora.</p>
       <div class="row">
         <button class="btn" id="export">Exportar JSON</button>
         <button class="btn" id="importBtn">Importar JSON</button>
@@ -81,7 +87,7 @@
       </div>
       <div class="grid">
         <div><label>Nombre</label><input type="text" data-f="name"></div>
-        <div><label>Prefijo adicional</label><input type="text" data-f="extraPrefix" class="mono"></div>
+        <div><label>Prefijo de proyecto</label><input type="text" data-f="extraPrefix" class="mono"></div>
         <div><label>Prefijo publicador</label><input type="text" data-f="publisherPrefix" class="mono"></div>
       </div>
       <div class="sols"></div>

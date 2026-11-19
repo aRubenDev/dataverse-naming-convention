@@ -13,49 +13,77 @@ t('snake + tildes + ñ + stop words', () => {
   assert.strictEqual(N.toSnake('De la', S.stopWords), 'de_la'); // si todo son stop words se mantienen
 });
 
-t('detección de tipos ES/EN', () => {
-  const c = s => (N.detectType(s) || {}).category;
-  assert.strictEqual(c('Texto'), 'text');
-  assert.strictEqual(c('Una línea de texto'), 'text');
-  assert.strictEqual(c('Texto enriquecido'), 'richtext');
-  assert.strictEqual(c('Área de texto'), 'text');
-  assert.strictEqual(c('Correo electrónico'), 'text');
-  assert.strictEqual(c('URL'), 'url');
-  assert.strictEqual(c('Número entero'), 'number');
-  assert.strictEqual(c('Moneda'), 'number');
-  assert.strictEqual(c('Fecha y hora'), 'date');
-  assert.strictEqual(c('Solo fecha'), 'date');
-  assert.strictEqual(c('Sí/No'), 'boolean');
-  assert.strictEqual(c('Yes/no'), 'boolean');
-  assert.strictEqual(c('Opción'), 'choice');
-  assert.strictEqual(c('Opciones'), 'choice');
-  assert.strictEqual(c('Choices'), 'choice');
-  assert.strictEqual(c('Búsqueda'), 'lookup');
-  assert.strictEqual(c('Customer'), 'lookup');
-  assert.strictEqual(c('Imagen'), 'file');
-  assert.strictEqual(c('Archivo'), 'file');
-  assert.strictEqual(c('Fórmula'), 'formula');
+t('detección de tipos ES/EN → sufijo del estándar', () => {
+  const sx = txt => N.suffixFor((N.detectType(txt) || {}).category, S);
+  const cases = {
+    'Texto': '_txt', 'Una línea de texto': '_txt', 'Símbolo bursátil': '_txt',
+    'Área de texto': '_textarea', 'Varias líneas de texto': '_multitxt', 'Multiple lines of text': '_multitxt',
+    'Texto enriquecido': '_richtxt', 'Correo electrónico': '_email', 'Teléfono': '_phone', 'URL': '_url',
+    'Número entero': '_int', 'Whole number': '_int', 'Decimal': '_dec', 'Número de punto flotante': '_float',
+    'Moneda': '_currency', 'Duración': '_duration', 'Sí/No': '_bool', 'Yes/no': '_bool',
+    'Opción': '_choice', 'Opciones': '_multichoice', 'Choices': '_multichoice',
+    'Búsqueda': '_lookup', 'Customer': '_lookup', 'Solo fecha': '_date', 'Fecha y hora': '_datetime',
+    'Archivo': '_file', 'Imagen': '_image', 'Idioma': '_language', 'Zona horaria': '_timezone',
+    'Autonumérico': '_autonum', 'Fórmula': '_formula'
+  };
+  for (const [txt, suf] of Object.entries(cases)) assert.strictEqual(sx(txt), suf, txt);
   assert.strictEqual(N.detectType('xyz'), null);
+});
+
+t('comportamiento calculado / acumulativo', () => {
+  assert.strictEqual(N.detectBehavior('Calculada'), 'calculated');
+  assert.strictEqual(N.detectBehavior('Calculated'), 'calculated');
+  assert.strictEqual(N.detectBehavior('Acumulativa'), 'rollup');
+  assert.strictEqual(N.detectBehavior('Rollup'), 'rollup');
+  assert.strictEqual(N.detectBehavior('Simple'), null);
+  assert.strictEqual(N.detectBehavior('Zona horaria independiente'), null);
+  assert.strictEqual(N.buildName({ displayName: 'Importe', category: 'calculated', settings: S }), 'importe_calc');
+  assert.strictEqual(N.buildName({ displayName: 'Total facturado', category: 'rollup', settings: S }), 'total_facturado_rollup');
 });
 
 t('buildName', () => {
   assert.strictEqual(N.buildName({ displayName: 'Fecha de Alta', category: 'date', settings: S }), 'fecha_alta_date');
-  assert.strictEqual(N.buildName({ displayName: 'Fecha de Alta', category: 'date', settings: S, extraPrefix: 'CRM' }), 'crm_fecha_alta_date');
-  assert.strictEqual(N.buildName({ displayName: 'Estado Choice', category: 'choice', settings: S }), 'estado_choice');
-  assert.strictEqual(N.buildName({ displayName: 'Total', category: 'formula', settings: S }), 'total_fx');
+  assert.strictEqual(N.buildName({ displayName: 'Estado', category: 'optionset', settings: S, extraPrefix: 'GS' }), 'gs_estado_optionset');
+  assert.strictEqual(N.buildName({ displayName: 'GS_Estado', category: 'optionset', settings: S, extraPrefix: 'gs' }), 'gs_estado_optionset');
+  assert.strictEqual(N.buildName({ displayName: 'Estado optionset', category: 'optionset', settings: S }), 'estado_optionset');
+  assert.strictEqual(N.buildName({ displayName: 'Total', category: 'formula', settings: S }), 'total_formula');
   assert.strictEqual(N.buildName({ displayName: '', category: 'text', settings: S }), '');
 });
 
-t('choice siempre _choice aunque se intente cambiar', () => {
-  const s = N.mergeSettings({ suffixes: { choice: '_opt', text: '_t' } });
-  assert.strictEqual(N.suffixFor('choice', s), '_choice');
-  assert.strictEqual(N.buildName({ displayName: 'Nombre', category: 'text', settings: s }), 'nombre_t');
+t('migración de configuración antigua y sufijos editables', () => {
+  const old = N.mergeSettings({ suffixes: { number: '_num', formula: '_fx', text: '_t' }, stopWords: ['de'] });
+  assert.strictEqual(N.suffixFor('formula', old), '_formula');
+  assert.strictEqual(N.suffixFor('text', old), '_txt');
+  assert.deepStrictEqual(old.stopWords, ['de']);
+  const cur = N.mergeSettings({ version: 2, suffixes: { text: '_t' } });
+  assert.strictEqual(N.buildName({ displayName: 'Nombre', category: 'text', settings: cur }), 'nombre_t');
 });
 
 t('validate', () => {
-  assert.deepStrictEqual(N.validate('crm_fecha_alta_date', { category: 'date', settings: S, extraPrefix: 'crm' }), []);
+  assert.deepStrictEqual(N.validate('fecha_alta_date', { category: 'date', settings: S }), []);
   assert.strictEqual(N.validate('FechaAlta', { category: 'date', settings: S }).length, 2);
-  assert.ok(N.validate('fecha_alta_date', { category: 'date', settings: S, extraPrefix: 'crm' })[0].includes('crm_'));
+  assert.ok(N.validate('estado_optionset', { category: 'optionset', settings: S, extraPrefix: 'gs' })[0].includes('gs_'));
+  assert.ok(N.validate('estado_choice', { category: 'choice', settings: S })[0].includes('Estado'));
+  assert.ok(N.validate('activo_bool', { category: 'boolean', settings: S })[0].includes('Estado'));
+  assert.deepStrictEqual(N.validate('estado_civil_choice', { category: 'choice', settings: S }), []);
+});
+
+t('importar JSON de validaciones ECIJA', () => {
+  const std = {
+    version: '1.0',
+    dataverse: {
+      columnNaming: { suffixes: { text: '_txt', integer: '_entero', calculated: '_calc', inventado: '_x' } },
+      globalOptionSetNaming: { pattern: '<prefix>_<name>_optionset' },
+      entityStateManagement: { forbiddenColumns: ['estado_choice', 'Activo_Bool'] }
+    }
+  };
+  const s = N.settingsFromStandard(std, { stopWords: ['de'] });
+  assert.strictEqual(s.suffixes.integer, '_entero');
+  assert.strictEqual(s.suffixes.optionset, '_optionset');
+  assert.strictEqual(s.suffixes.inventado, undefined);
+  assert.deepStrictEqual(s.forbiddenColumns, ['estado_choice', 'activo_bool']);
+  assert.deepStrictEqual(s.stopWords, ['de']);
+  assert.strictEqual(N.settingsFromStandard({ format: 'ecija-naming' }), null);
 });
 
 t('contexto y proyecto', () => {

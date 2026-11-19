@@ -57,7 +57,9 @@
   function preview() {
     if (!ctx.envId) return;
     const proj = N.resolveProject(draftProjects(), ctx);
-    const name = N.buildName({ displayName: $('pvName').value, category: $('pvType').value, settings, extraPrefix: proj.extraPrefix });
+    const category = $('pvType').value;
+    const extraPrefix = category === 'optionset' ? proj.extraPrefix : '';
+    const name = N.buildName({ displayName: $('pvName').value, category, settings, extraPrefix });
     $('pvOut').textContent = name ? (proj.publisherPrefix || 'pub_') + name : '—';
   }
 

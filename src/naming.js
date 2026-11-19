@@ -11,53 +11,85 @@
     'the', 'of', 'and', 'or', 'to', 'for', 'in', 'on', 'an'
   ];
 
-  // Categorías de sufijo (las del estándar + fórmula). "choice" es fijo.
+  // Sufijos por tipo de columna (claves = dataverse.columnNaming.suffixes del estándar ECIJA).
   const CATEGORIES = [
-    { key: 'text',     label: 'Texto',           covers: 'Texto, área de texto, email, teléfono, símbolo bursátil, autonumérico', suffix: '_txt' },
-    { key: 'richtext', label: 'Texto enriquecido', covers: 'Texto enriquecido', suffix: '_richtxt' },
-    { key: 'url',      label: 'URL',             covers: 'URL', suffix: '_url' },
-    { key: 'number',   label: 'Número',          covers: 'Número entero, decimal, flotante, moneda, duración, zona horaria, idioma', suffix: '_num' },
-    { key: 'date',     label: 'Fecha',           covers: 'Solo fecha, fecha y hora', suffix: '_date' },
-    { key: 'boolean',  label: 'Sí/No',           covers: 'Sí/No', suffix: '_bool' },
-    { key: 'choice',   label: 'Choice',          covers: 'Choice, Choices (selección múltiple), opción global', suffix: '_choice', locked: true },
-    { key: 'lookup',   label: 'Búsqueda',        covers: 'Búsqueda, cliente', suffix: '_lookup' },
-    { key: 'file',     label: 'Archivo',         covers: 'Archivo, imagen', suffix: '_file' },
-    { key: 'formula',  label: 'Fórmula',         covers: 'Fórmula (Power Fx)', suffix: '_fx' }
+    { key: 'text',          label: 'Texto',                  covers: 'Una línea de texto, símbolo bursátil', suffix: '_txt' },
+    { key: 'textarea',      label: 'Área de texto',          covers: 'Área de texto', suffix: '_textarea' },
+    { key: 'multilineText', label: 'Varias líneas de texto', covers: 'Varias líneas de texto', suffix: '_multitxt' },
+    { key: 'richText',      label: 'Texto enriquecido',      covers: 'Texto enriquecido', suffix: '_richtxt' },
+    { key: 'email',         label: 'Correo electrónico',     covers: 'Correo electrónico', suffix: '_email' },
+    { key: 'phone',         label: 'Teléfono',               covers: 'Teléfono', suffix: '_phone' },
+    { key: 'url',           label: 'URL',                    covers: 'URL', suffix: '_url' },
+    { key: 'integer',       label: 'Número entero',          covers: 'Número entero', suffix: '_int' },
+    { key: 'decimal',       label: 'Decimal',                covers: 'Número decimal', suffix: '_dec' },
+    { key: 'float',         label: 'Flotante',               covers: 'Número de punto flotante', suffix: '_float' },
+    { key: 'currency',      label: 'Moneda',                 covers: 'Moneda', suffix: '_currency' },
+    { key: 'duration',      label: 'Duración',               covers: 'Duración', suffix: '_duration' },
+    { key: 'boolean',       label: 'Sí/No',                  covers: 'Sí/No', suffix: '_bool' },
+    { key: 'choice',        label: 'Opción',                 covers: 'Opción (selección única)', suffix: '_choice' },
+    { key: 'multichoice',   label: 'Opciones',               covers: 'Opciones (selección múltiple)', suffix: '_multichoice' },
+    { key: 'lookup',        label: 'Búsqueda',               covers: 'Búsqueda, cliente', suffix: '_lookup' },
+    { key: 'date',          label: 'Solo fecha',             covers: 'Solo fecha', suffix: '_date' },
+    { key: 'datetime',      label: 'Fecha y hora',           covers: 'Fecha y hora', suffix: '_datetime' },
+    { key: 'file',          label: 'Archivo',                covers: 'Archivo', suffix: '_file' },
+    { key: 'image',         label: 'Imagen',                 covers: 'Imagen', suffix: '_image' },
+    { key: 'language',      label: 'Idioma',                 covers: 'Idioma', suffix: '_language' },
+    { key: 'timezone',      label: 'Zona horaria',           covers: 'Zona horaria', suffix: '_timezone' },
+    { key: 'autonumber',    label: 'Autonumérico',           covers: 'Autonumérico', suffix: '_autonum' },
+    { key: 'formula',       label: 'Fórmula',                covers: 'Fórmula (Power Fx)', suffix: '_formula' },
+    { key: 'calculated',    label: 'Calculada',              covers: 'Comportamiento «Calculada» (sustituye al sufijo del tipo)', suffix: '_calc' },
+    { key: 'rollup',        label: 'Acumulativa',            covers: 'Comportamiento «Acumulativa» (sustituye al sufijo del tipo)', suffix: '_rollup' },
+    { key: 'optionset',     label: 'Opción global',          covers: 'Opción global (lleva además el prefijo de proyecto)', suffix: '_optionset' }
   ];
 
   // Detección del tipo de datos a partir del texto visible del desplegable.
-  // El orden importa: lo más específico primero.
+  // El orden importa: lo más específico primero. [regex, clave interna, etiqueta, categoría de sufijo]
   const TYPE_PATTERNS = [
-    [/texto enriquecido|rich ?text/, 'richtext', 'Texto enriquecido', 'richtext'],
-    [/area de texto|text ?area|varias lineas|multiple lines/, 'textarea', 'Área de texto', 'text'],
-    [/correo|e-?mail/, 'email', 'Correo electrónico', 'text'],
+    [/texto enriquecido|rich ?text/, 'richtext', 'Texto enriquecido', 'richText'],
+    [/varias lineas|multiple lines|multilinea|multi-?line/, 'multiline', 'Varias líneas de texto', 'multilineText'],
+    [/area de texto|text ?area/, 'textarea', 'Área de texto', 'textarea'],
+    [/correo|e-?mail/, 'email', 'Correo electrónico', 'email'],
     [/\burl\b/, 'url', 'URL', 'url'],
-    [/telefono|phone/, 'phone', 'Teléfono', 'text'],
+    [/telefono|phone/, 'phone', 'Teléfono', 'phone'],
     [/simbolo|ticker/, 'ticker', 'Símbolo bursátil', 'text'],
-    [/autonum|auto ?number/, 'autonumber', 'Autonumérico', 'text'],
+    [/autonum|auto ?number/, 'autonumber', 'Autonumérico', 'autonumber'],
     [/formula/, 'formula', 'Fórmula', 'formula'],
-    [/moneda|divisa|currency/, 'currency', 'Moneda', 'number'],
-    [/duracion|duration/, 'duration', 'Duración', 'number'],
-    [/zona horaria|time ?zone/, 'timezone', 'Zona horaria', 'number'],
-    [/idioma|language/, 'language', 'Idioma', 'number'],
-    [/numero entero|whole number|\bentero\b/, 'wholenumber', 'Número entero', 'number'],
-    [/decimal/, 'decimal', 'Decimal', 'number'],
-    [/flotante|float/, 'float', 'Flotante', 'number'],
-    [/fecha y hora|date and time/, 'datetime', 'Fecha y hora', 'date'],
+    [/moneda|divisa|currency/, 'currency', 'Moneda', 'currency'],
+    [/duracion|duration/, 'duration', 'Duración', 'duration'],
+    [/zona horaria|time ?zone/, 'timezone', 'Zona horaria', 'timezone'],
+    [/idioma|language/, 'language', 'Idioma', 'language'],
+    [/numero entero|whole number|\bentero\b/, 'wholenumber', 'Número entero', 'integer'],
+    [/decimal/, 'decimal', 'Decimal', 'decimal'],
+    [/flotante|float/, 'float', 'Flotante', 'float'],
+    [/fecha y hora|date and time/, 'datetime', 'Fecha y hora', 'datetime'],
     [/solo fecha|date only/, 'dateonly', 'Solo fecha', 'date'],
     [/si\s*\/\s*no|yes\s*\/\s*no|dos opciones|two options|boolean/, 'boolean', 'Sí/No', 'boolean'],
-    [/opciones|choices|elecciones|seleccion multiple|multi ?select/, 'choices', 'Choices (múltiple)', 'choice'],
-    [/opcion|choice|eleccion|option ?set|picklist/, 'choice', 'Choice', 'choice'],
+    [/opciones|choices|elecciones|seleccion multiple|multi ?select/, 'choices', 'Opciones (múltiple)', 'multichoice'],
+    [/opcion|choice|eleccion|option ?set|picklist/, 'choice', 'Opción', 'choice'],
     [/cliente|customer/, 'customer', 'Cliente', 'lookup'],
     [/busqueda|lookup/, 'lookup', 'Búsqueda', 'lookup'],
-    [/imagen|\bimage\b/, 'image', 'Imagen', 'file'],
+    [/imagen|\bimage\b/, 'image', 'Imagen', 'image'],
     [/archivo|\bfile\b/, 'file', 'Archivo', 'file'],
-    [/numero|number/, 'wholenumber', 'Número', 'number'],
+    [/numero|number/, 'wholenumber', 'Número', 'integer'],
     [/fecha|\bdate\b/, 'dateonly', 'Fecha', 'date'],
     [/texto|\btext\b|una linea|single line/, 'text', 'Texto', 'text']
   ];
 
-  const CHOICE_TYPE = { key: 'globalchoice', label: 'Opción global', category: 'choice' };
+  /** Comportamiento de la columna (Simple / Calculada / Acumulativa) → categoría que sustituye al tipo. */
+  function detectBehavior(text) {
+    const t = normalizeText(text);
+    if (/calculad|calculated/.test(t)) return 'calculated';
+    if (/acumulad|acumulativ|rollup|roll-up|resumen/.test(t)) return 'rollup';
+    return null;
+  }
+
+  // Columnas de estado propias prohibidas: usar Estado / Razón para el estado nativos.
+  const DEFAULT_FORBIDDEN_COLUMNS = ['estado_choice', 'estadoactual_choice', 'activo_bool', 'estadoregistro_txt'];
+
+  // Versión del esquema de configuración guardada (2 = sufijos del estándar de validaciones 1.0).
+  const SETTINGS_VERSION = 2;
+
+  const CHOICE_TYPE = { key: 'globalchoice', label: 'Opción global', category: 'optionset' };
 
   function stripAccents(s) {
     return String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -97,7 +129,6 @@
   }
 
   function suffixFor(category, settings) {
-    if (category === 'choice') return '_choice';
     const s = settings && settings.suffixes && settings.suffixes[category];
     return cleanSuffix(s != null ? s : (CATEGORIES.find(c => c.key === category) || {}).suffix);
   }
@@ -113,7 +144,7 @@
     const suffix = suffixFor(category, settings);
     const sb = suffix.slice(1);
     let body = core;
-    // Evita "estado_choice_choice" si el nombre ya trae el sufijo.
+    // Evita "estado_optionset_optionset" si el nombre ya trae el sufijo.
     if (sb && body !== sb && body.endsWith('_' + sb)) body = body.slice(0, -(sb.length + 1));
     const pre = cleanPrefix(extraPrefix);
     if (pre && body !== pre && !body.startsWith(pre + '_')) body = pre + '_' + body;
@@ -132,6 +163,8 @@
     }
     const pre = cleanPrefix(extraPrefix);
     if (pre && !v.startsWith(pre + '_')) issues.push('No empieza por el prefijo de proyecto ' + pre + '_');
+    const forbidden = (settings && settings.forbiddenColumns) || DEFAULT_FORBIDDEN_COLUMNS;
+    if (forbidden.includes(v)) issues.push('Columna de estado propia no permitida: usa Estado y Razón para el estado nativos');
     return issues;
   }
 
@@ -238,8 +271,10 @@
       autoExpand: true,
       showBadges: true,
       saveAndNew: true,
+      version: SETTINGS_VERSION,
       suffixes,
-      stopWords: DEFAULT_STOP_WORDS.slice()
+      stopWords: DEFAULT_STOP_WORDS.slice(),
+      forbiddenColumns: DEFAULT_FORBIDDEN_COLUMNS.slice()
     };
   }
 
@@ -247,9 +282,32 @@
     const d = defaultSettings();
     const s = stored && typeof stored === 'object' ? stored : {};
     const out = Object.assign({}, d, s);
-    out.suffixes = Object.assign({}, d.suffixes, s.suffixes || {});
-    out.suffixes.choice = '_choice'; // fijo por estándar
+    // Configuración anterior a la v2 (sufijos agrupados: _num, _fx…): se descartan sus sufijos.
+    const current = (s.version || 1) >= SETTINGS_VERSION;
+    out.suffixes = Object.assign({}, d.suffixes, current ? s.suffixes || {} : {});
+    out.version = SETTINGS_VERSION;
     out.stopWords = Array.isArray(s.stopWords) ? s.stopWords : d.stopWords;
+    out.forbiddenColumns = Array.isArray(s.forbiddenColumns) ? s.forbiddenColumns : d.forbiddenColumns;
+    return out;
+  }
+
+  /**
+   * Convierte el JSON de validaciones ECIJA ({ dataverse: { columnNaming: { suffixes } … } })
+   * en ajustes de la extensión. Devuelve null si no tiene ese formato.
+   */
+  function settingsFromStandard(std, base) {
+    const dv = std && std.dataverse;
+    if (!dv || typeof dv !== 'object') return null;
+    const out = mergeSettings(base);
+    const sx = dv.columnNaming && dv.columnNaming.suffixes;
+    if (sx && typeof sx === 'object') {
+      CATEGORIES.forEach(c => { if (typeof sx[c.key] === 'string' && cleanSuffix(sx[c.key])) out.suffixes[c.key] = cleanSuffix(sx[c.key]); });
+    }
+    const gp = dv.globalOptionSetNaming && dv.globalOptionSetNaming.pattern;
+    const m = typeof gp === 'string' && gp.match(/>_?([a-z0-9]+)\s*$/i);
+    if (m) out.suffixes.optionset = '_' + m[1].toLowerCase();
+    const fc = dv.entityStateManagement && dv.entityStateManagement.forbiddenColumns;
+    if (Array.isArray(fc)) out.forbiddenColumns = fc.map(x => String(x).toLowerCase().trim()).filter(Boolean);
     return out;
   }
 
@@ -277,11 +335,11 @@
   }
 
   const api = {
-    DEFAULT_STOP_WORDS, CATEGORIES, CHOICE_TYPE,
-    stripAccents, normalizeText, detectType, toSnake, cleanSuffix, cleanPrefix,
+    DEFAULT_STOP_WORDS, DEFAULT_FORBIDDEN_COLUMNS, CATEGORIES, CHOICE_TYPE,
+    stripAccents, normalizeText, detectType, detectBehavior, toSnake, cleanSuffix, cleanPrefix,
     suffixFor, buildName, validate, relationshipToken, buildRelationshipName, lookupQualifier, RELATIONSHIP_MAX,
     parsePortalRelationshipDefault, validateRelationship,
-    defaultSettings, mergeSettings,
+    defaultSettings, mergeSettings, settingsFromStandard,
     parseContext, resolveProject
   };
 

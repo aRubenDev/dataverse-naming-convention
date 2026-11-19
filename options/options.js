@@ -18,6 +18,7 @@
     $('showBadges').checked = settings.showBadges;
     $('saveAndNew').checked = settings.saveAndNew;
     $('stopWords').value = settings.stopWords.join(', ');
+    $('forbiddenColumns').value = settings.forbiddenColumns.join(', ');
 
     const tb = $('suffixRows');
     tb.textContent = '';
@@ -28,8 +29,7 @@
       const td3 = document.createElement('td');
       const inp = document.createElement('input');
       inp.type = 'text'; inp.className = 'mono'; inp.dataset.cat = c.key;
-      inp.value = c.locked ? '_choice' : settings.suffixes[c.key];
-      inp.disabled = !!c.locked;
+      inp.value = settings.suffixes[c.key];
       inp.setAttribute('aria-label', 'Sufijo ' + c.label);
       td3.append(inp);
       tr.append(td1, td2, td3);
@@ -78,11 +78,10 @@
     settings.showBadges = $('showBadges').checked;
     settings.saveAndNew = $('saveAndNew').checked;
     settings.stopWords = $('stopWords').value.split(/[,\n;]+/).map(w => N.normalizeText(w)).filter(Boolean);
+    settings.forbiddenColumns = $('forbiddenColumns').value.split(/[,\n;\s]+/).map(w => w.toLowerCase().trim()).filter(Boolean);
     document.querySelectorAll('#suffixRows input').forEach(i => {
-      if (i.disabled) return;
       settings.suffixes[i.dataset.cat] = N.cleanSuffix(i.value) || N.CATEGORIES.find(c => c.key === i.dataset.cat).suffix;
     });
-    settings.suffixes.choice = '_choice';
     document.querySelectorAll('.proj').forEach(node => {
       const p = projects[node.dataset.env];
       if (!p) return;
@@ -124,11 +123,16 @@
     if (!f) return;
     try {
       const data = JSON.parse(await f.text());
-      if (data.format !== 'ecija-naming') throw new Error('Formato no reconocido');
-      settings = N.mergeSettings(data.settings);
-      projects = data.projects && typeof data.projects === 'object' ? data.projects : {};
+      const fromStd = data.format !== 'ecija-naming' && N.settingsFromStandard(data, settings);
+      if (fromStd) {
+        settings = fromStd; // validaciones ECIJA: solo ajustes, los proyectos se conservan
+      } else {
+        if (data.format !== 'ecija-naming') throw new Error('Formato no reconocido');
+        settings = N.mergeSettings(data.settings);
+        projects = data.projects && typeof data.projects === 'object' ? data.projects : {};
+      }
       render();
-      $('status').textContent = 'Importado. Pulsa "Guardar cambios" para aplicarlo.';
+      $('status').textContent = (fromStd ? 'Validaciones ECIJA importadas' : 'Importado') + '. Pulsa "Guardar cambios" para aplicarlo.';
     } catch (err) {
       $('status').textContent = 'Error al importar: ' + err.message;
     }

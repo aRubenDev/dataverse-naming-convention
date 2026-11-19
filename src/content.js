@@ -1,10 +1,11 @@
 /*
  * ECIJA Dataverse Naming — content script para make.powerapps.com (interfaz moderna).
  *
- * - Panel "Nueva columna": nombre de esquema en snake_case + sufijo del tipo.
- *   Si es Búsqueda, además el nombre de la relación: [relacionada]_1N_[actual].
- * - Panel "Nueva opción" (opción global): sufijo _choice y "PREFIJO_" en el nombre
- *   para mostrar.
+ * - Panel "Nueva columna": nombre de esquema en snake_case + sufijo del tipo
+ *   (o _calc / _rollup si el comportamiento es calculado / acumulativo), sin prefijo
+ *   de proyecto. Si es Búsqueda, además el nombre de la relación: [relacionada]_1N_[actual].
+ * - Panel "Nueva opción" (opción global): prefijo de proyecto + sufijo _optionset y
+ *   "PREFIJO_" en el nombre para mostrar.
  * - Paneles de Relaciones (1:N, N:1, N:N): nombre de la relación y de la columna
  *   de búsqueda.
  * - Si el usuario escribe a mano en un campo gestionado, deja de tocarlo.
@@ -44,6 +45,7 @@
     lookupSchema: [/^nombre (de|del) (la )?columna de busqueda\b/, /^lookup column (schema )?name\b/, /^nombre de esquema de (la )?(columna de )?busqueda\b/],
     choiceSchema: [/^name$/, /^nombre$/, /^schema name\b/, /^nombre (de|del) esquema\b/, /^logical name\b/, /^nombre logico\b/],
     dataType: [/^data type\b/, /^tipo de datos?\b/],
+    behavior: [/^behavior\b/, /^behaviour\b/, /^comportamiento\b/],
     advanced: [/^advanced options\b/, /^opciones avanzadas\b/, /^mas opciones\b/],
     relName: [/^nombre de (la )?relacion\b/, /^relationship (schema )?name\b/, /^nombre de esquema de (la )?relacion\b/],
     relatedTable: [/^tabla relacionada\b/, /^related table\b/],
@@ -390,8 +392,10 @@
 
   // ---------- Columna / opción global (nombre de esquema) ----------
   function manageSchema(schema, display, type, rawType, proj, extraIssues) {
+    // El prefijo de proyecto solo va en las opciones globales; las columnas no lo llevan.
+    const extraPrefix = type && type.category === 'optionset' ? proj.extraPrefix : '';
     const expected = type ? N.buildName({
-      displayName: display.value, category: type.category, settings, extraPrefix: proj.extraPrefix
+      displayName: display.value, category: type.category, settings, extraPrefix
     }) : '';
     manageField(schema, {
       expected,
@@ -400,9 +404,9 @@
         if (!type) {
           return { level: 'warn', msg: 'Tipo de datos no reconocido' + (rawType ? ` («${rawType.slice(0, 40)}»)` : '') + ': no se genera el nombre' };
         }
-        const issues = N.validate(value, { category: type.category, settings, extraPrefix: proj.extraPrefix })
+        const issues = N.validate(value, { category: type.category, settings, extraPrefix })
           .concat(extraIssues ? extraIssues() : []);
-        const details = proj.extraPrefix ? [`Prefijo de proyecto: ${proj.extraPrefix}_ (${proj.source === 'solution' ? 'solución' : 'entorno'})`] : [];
+        const details = extraPrefix ? [`Prefijo de proyecto: ${proj.extraPrefix}_ (${proj.source === 'solution' ? 'solución' : 'entorno'})`] : [];
         return issuesResult(issues, `Cumple estándar ECIJA · ${type.label} → ${N.suffixFor(type.category, settings)}`, details);
       }
     });
@@ -657,7 +661,13 @@
 
   function processColumnPanel(c, proj, display, dataType) {
     const rawType = readControlText(dataType).trim();
-    const type = N.detectType(rawType);
+    let type = N.detectType(rawType);
+    // Comportamiento calculado / acumulativo: su sufijo sustituye al del tipo (importe_calc).
+    const behaviorCtl = findControls(c, LBL.behavior, TYPE_SEL).find(el => el !== dataType);
+    const behavior = behaviorCtl ? N.detectBehavior(readControlText(behaviorCtl)) : null;
+    if (type && behavior && type.category !== 'lookup') {
+      type = Object.assign({}, type, { category: behavior, label: type.label + (behavior === 'calculated' ? ' calculada' : ' acumulativa') });
+    }
     const relInput = findControl(c, LBL.relName, INPUT_SEL);
     const schema = findControls(c, LBL.schema, INPUT_SEL).find(el => el !== display && el !== relInput);
     if (!schema) { expandAdvanced(c); return; }

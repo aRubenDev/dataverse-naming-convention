@@ -2,12 +2,43 @@
 
 Extensión para Brave/Chrome/Edge (Manifest V3) que, en la interfaz moderna de
 `make.powerapps.com`, genera el **nombre lógico** de columnas y opciones globales
-según el estándar ECIJA:
+según el estándar de validaciones ECIJA (v1.0):
 
 ```
-<prefijo publicador>_<prefijo proyecto>_<nombre_en_snake_case>_<sufijo tipo>
-ecj_crm_fecha_alta_cliente_date
+Columna:        <prefijo publicador>_<nombre_en_snake_case>_<sufijo tipo>
+                ecj_fecha_alta_cliente_date · ecj_importe_calc
+Opción global:  <prefijo publicador>_<prefijo proyecto>_<nombre>_optionset
+                ecj_gs_estado_optionset (nombre para mostrar: GS_Estado)
 ```
+
+El prefijo del publicador lo pone el portal y no se toca.
+
+### Sufijos
+
+| Tipo | Sufijo | Tipo | Sufijo |
+|---|---|---|---|
+| Texto, símbolo bursátil | `_txt` | Sí/No | `_bool` |
+| Área de texto | `_textarea` | Opción | `_choice` |
+| Varias líneas de texto | `_multitxt` | Opciones (múltiple) | `_multichoice` |
+| Texto enriquecido | `_richtxt` | Búsqueda, cliente | `_lookup` |
+| Correo electrónico | `_email` | Solo fecha | `_date` |
+| Teléfono | `_phone` | Fecha y hora | `_datetime` |
+| URL | `_url` | Archivo | `_file` |
+| Número entero | `_int` | Imagen | `_image` |
+| Decimal | `_dec` | Idioma | `_language` |
+| Flotante | `_float` | Zona horaria | `_timezone` |
+| Moneda | `_currency` | Autonumérico | `_autonum` |
+| Duración | `_duration` | Fórmula | `_formula` |
+| Comportamiento calculado | `_calc` | Comportamiento acumulativo | `_rollup` |
+
+Con comportamiento calculado o acumulativo el sufijo sustituye al del tipo (`importe_calc`,
+no `importe_dec_calc`). Las columnas de estado propias (`estado_choice`, `activo_bool`…)
+se marcan en el aviso: hay que usar *Estado* y *Razón para el estado* nativos.
+
+Desde **Configuración avanzada → Importar JSON** se puede cargar directamente el JSON de
+validaciones ECIJA: se toman los sufijos, el de opción global y las columnas prohibidas.
+Al actualizar desde una versión anterior a la 1.6, los sufijos guardados se sustituyen por
+los del estándar.
 
 ## Instalación (Brave)
 
@@ -21,7 +52,7 @@ Tras modificar el código: botón ⟳ de la extensión y recarga la pestaña del
 ## Uso
 
 - **Popup** (icono de la barra), estando dentro de un entorno: nombre del proyecto,
-  prefijo adicional y, opcionalmente, un prefijo distinto para la solución abierta.
+  prefijo de proyecto (solo para opciones globales) y, opcionalmente, uno distinto para la solución abierta.
 - **Configuración avanzada**: sufijos por tipo, palabras vacías, lista de proyectos,
   exportar/importar JSON para compartirlo con el equipo.
 
@@ -32,7 +63,7 @@ Tras modificar el código: botón ⟳ de la extensión y recarga la pestaña del
 | Escribes el nombre para mostrar o cambias el tipo | Regenera el nombre lógico |
 | Escribes tú en el nombre lógico | Deja de tocarlo en ese panel (aunque cambies el tipo) |
 | Botón **Regenerar** del aviso | Vuelve al modo automático |
-| Panel "Nueva opción" (opción global) | Mismo cálculo con `_choice` y, si hay prefijo de proyecto, el nombre para mostrar empieza por él en mayúsculas (`CRM_Estado`). Se añade una vez; si lo borras, se respeta |
+| Panel "Nueva opción" (opción global) | Mismo cálculo con `_optionset` y el prefijo de proyecto y, si hay prefijo de proyecto, el nombre para mostrar empieza por él en mayúsculas (`CRM_Estado`). Se añade una vez; si lo borras, se respeta |
 | Columna de tipo Búsqueda | Además, nombre de la relación: `[tabla relacionada]_1N_[tabla actual]` |
 | Relaciones → Uno a varios | `[tabla actual]_1N_[tabla relacionada]` + columna de búsqueda con `_lookup` |
 | Relaciones → Varios a uno | `[tabla relacionada]_1N_[tabla actual]` + columna de búsqueda con `_lookup` |
@@ -67,7 +98,8 @@ Mientras filtras en un desplegable con búsqueda (p. ej. "Tabla relacionada") la
 extensión no escribe en ningún campo, y si el portal mueve el foco al rellenar un
 campo, lo devuelve a donde estabas.
 
-El aviso bajo el nombre lógico indica si cumple (snake_case, sufijo, prefijo de proyecto).
+El aviso bajo el nombre lógico indica si cumple (snake_case, sufijo, prefijo de proyecto en
+opciones globales, columnas de estado prohibidas).
 Es solo informativo: nunca impide guardar.
 
 Conversión: minúsculas, sin tildes ni ñ, sin caracteres especiales y sin palabras vacías
