@@ -5,7 +5,7 @@
  *   - Obligatoria (barra roja) y Recomendada (barra azul): columna «Requerido / Obligatorio».
  *   - Mía (fondo verde): el nombre lógico empieza por el prefijo del publicador del popup.
  *     Dataverse no guarda quién creó una columna; el prefijo es lo más fiable.
- *   - Personalizada de otro publicador (fondo lila) y Estándar (atenuada).
+ *   - De otro publicador (fondo lila: nombre con otro prefijo) y Estándar (atenuada: sin prefijo).
  *   - No cumple (borde ámbar): mía y el nombre no termina en el sufijo de su tipo.
  * Solo añade atributos data-* a las filas y una leyenda flotante: no cambia nada del portal.
  * La lista es virtual (solo existen las filas visibles), así que se revisa periódicamente.
@@ -55,11 +55,13 @@
     name: [/^nombre$/, /^name$/, /^nombre logico$/, /^logical name$/, /^nombre de esquema$/, /^schema name$/],
     display: [/^nombre para mostrar$/, /^display name$/, /^columna$/, /^column$/],
     type: [/^tipo de datos?$/, /^data type$/, /^tipo$/, /^type$/],
-    required: [/^obligatori[oa]$/, /^requerid[oa]$/, /^required$/, /^requisito$/, /^nivel de requisito$/, /^requirement( level)?$/],
-    custom: [/^personalizad[oa]$/, /^custom$/, /^es personalizad[oa]$/, /^is custom$/]
+    required: [/^obligatori[oa]$/, /^requerid[oa]$/, /^required$/, /^requisito$/, /^nivel de requisito$/, /^requirement( level)?$/]
+    // «Personalizado» no se usa: el portal pone «Sí» también en columnas de sistema (createdby…)
   };
   const isHeader = (text, key) => H[key].some(r => r.test(text));
   const cellText = el => norm(el.innerText || el.textContent || '');
+  // El portal añade caracteres invisibles (iconos de orden, espacios de ancho cero) a cabeceras y celdas
+  const clean = t => t.replace(/[^a-z0-9_/ ]+/g, ' ').replace(/\s+/g, ' ').trim();
   const colIndex = (el, i) => Number(el.getAttribute('aria-colindex')) || (i + 1);
 
   /** Busca la lista de columnas: una cuadrícula (fuera de paneles) con cabecera de tipo de datos y de nombre. */
@@ -71,7 +73,7 @@
       if (!heads.length) continue;
       const map = {};
       heads.forEach((h, i) => {
-        const t = cellText(h);
+        const t = clean(cellText(h));
         for (const key of Object.keys(H)) if (map[key] == null && isHeader(t, key)) map[key] = colIndex(h, i);
       });
       if (map.type != null && (map.name != null || map.display != null)) out.push({ g, map, ordinal: !heads.some(h => h.hasAttribute('aria-colindex')) });
@@ -97,10 +99,10 @@
     for (const row of grid.g.querySelectorAll('[role="row"], tr')) {
       if (row.querySelector('[role="columnheader"], th')) continue;
       const cells = cellsOf(row, grid.ordinal);
-      const text = k => (grid.map[k] != null && cells[grid.map[k]] ? cellText(cells[grid.map[k]]) : '');
-      let name = text('name');
-      if (!LOGICAL.test(name)) name = (Object.values(cells).map(cellText).find(t => LOGICAL.test(t) && t.includes('_')) || name);
-      const res = N.classifyColumn({ name, type: text('type'), required: text('required'), custom: text('custom') }, ctx);
+      const text = k => (grid.map[k] != null && cells[grid.map[k]] ? clean(cellText(cells[grid.map[k]])) : '');
+      let name = text('name').replace(/[^a-z0-9_]/g, '');
+      if (!LOGICAL.test(name)) name = (Object.values(cells).map(c => clean(cellText(c))).find(t => LOGICAL.test(t) && t.includes('_')) || name);
+      const res = N.classifyColumn({ name, type: text('type'), required: text('required') }, ctx);
       const value = res.tags.join(' ');
       if (row.getAttribute(ATTR) !== value) row.setAttribute(ATTR, value);
       // Motivo del incumplimiento como información emergente de la fila

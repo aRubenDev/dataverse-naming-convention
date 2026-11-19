@@ -112,11 +112,11 @@ En **Tablas → <tabla> → Columnas** cada fila se marca según lo que muestra 
 
 | Marca | Significado | Cómo se detecta |
 |---|---|---|
-| Barra roja | Obligatoria | Columna *Requerido / Obligatorio* de la vista («Obligatorio para la empresa», «Requerido para el sistema», «Sí») |
+| Barra roja | Obligatoria | Columna *Requerido* de la lista = «Sí» (o «Obligatorio para la empresa» / «Requerido para el sistema», según la versión del portal) |
 | Barra azul | Recomendada | «Recomendado para la empresa» |
 | Fondo verde | Mía | El nombre lógico empieza por el **prefijo del publicador** configurado en el popup |
-| Fondo lila | De otro publicador | Columna *Personalizado* = Sí, o nombre con prefijo si esa columna no está en la vista |
-| Atenuada | Estándar | *Personalizado* = No, o nombre sin prefijo (`createdon`, `ownerid`…) |
+| Fondo lila | De otro publicador | Nombre con un prefijo distinto del tuyo (`msdyn_…`, `cr7a1_…`) |
+| Atenuada | Estándar | Nombre sin prefijo (`createdon`, `ownerid`…). La columna *Personalizado* del portal no sirve para esto: marca «Sí» también columnas de sistema |
 | Borde ámbar discontinuo | No cumple el estándar | Mía y el nombre no termina en el sufijo de su tipo, o es una columna de estado prohibida. El motivo sale al pasar el ratón |
 
 Dataverse no guarda quién creó cada columna, así que «mía» significa «con el prefijo de mi
