@@ -197,6 +197,32 @@
       ? [] : [`No sigue el patrón de columna principal ${patternLead(pattern)}NombreTabla`];
   }
 
+  /**
+   * Nombre de esquema de una tabla (sin el prefijo del publicador): prefijo de proyecto
+   * en minúsculas + nombre en PascalCase. "Punto orden del día" → gs_PuntoOrdenDia.
+   */
+  function buildTableName({ displayName, settings, extraPrefix }) {
+    const stop = (settings && settings.stopWords) || DEFAULT_STOP_WORDS;
+    const core = toPascal(withoutProjectWord(displayName || '', extraPrefix), stop);
+    if (!core) return '';
+    const pre = cleanPrefix(extraPrefix);
+    return (pre ? pre + '_' : '') + core;
+  }
+
+  function validateTableName(value, { extraPrefix }) {
+    const v = String(value || '');
+    if (!v) return ['El nombre de esquema está vacío'];
+    const issues = [];
+    const pre = cleanPrefix(extraPrefix);
+    let core = v;
+    if (pre) {
+      if (v.startsWith(pre + '_')) core = v.slice(pre.length + 1);
+      else issues.push('No empieza por el prefijo de proyecto ' + pre + '_');
+    }
+    if (!/^[A-Z][A-Za-z0-9]*$/.test(core)) issues.push('El nombre no está en PascalCase (sin espacios, tildes ni guiones bajos)');
+    return issues;
+  }
+
   /** Nombre (único) de la solución: "Gestión societaria" -> BASE_GestionSocietaria. */
   function buildSolutionName({ displayName, settings }) {
     const lead = patternLead((settings && settings.solutionPattern) || DEFAULT_SOLUTION_PATTERN);
@@ -234,28 +260,34 @@
   }
 
   /**
-   * Parte de una tabla dentro del nombre de relación:
-   * - con nombre lógico: prefijoPublicador + nombre lógico (ecija_gs_sociedad)
-   * - sin él: nombre para mostrar en snake_case (sociedad)
+   * Parte de una tabla dentro del nombre de relación, en PascalCase y sin prefijos:
+   * - con nombre para mostrar: "Punto orden día" / "GS_Sociedad" → PuntoOrdenDia / Sociedad
+   * - sin él, del nombre lógico: ecija_gs_auditor → Auditor
    */
-  function relationshipToken({ logical, display, pub, settings }) {
-    if (logical) {
-      const l = String(logical).toLowerCase();
-      return pub && !l.startsWith(pub) ? pub + l : l;
-    }
+  function relationshipToken({ logical, display, pub, settings, extraPrefix }) {
     const stop = (settings && settings.stopWords) || DEFAULT_STOP_WORDS;
-    return toSnake(display, stop);
+    if (display) {
+      const t = toPascal(withoutProjectWord(display, extraPrefix), stop);
+      if (t) return t;
+    }
+    if (logical) {
+      let l = String(logical).toLowerCase();
+      if (pub && l.startsWith(pub)) l = l.slice(pub.length);
+      const pre = cleanPrefix(extraPrefix);
+      if (pre && l.startsWith(pre + '_')) l = l.slice(pre.length + 1);
+      return toPascal(l.replace(/_/g, ' '), []);
+    }
+    return '';
   }
 
   /**
-   * Nombre de relación (sin el prefijo del publicador que el portal muestra aparte):
-   * {TablaPrincipal}_{1N|NN}_{TablaSecundaria}  →  gs_sociedad_1N_ecija_gs_auditor
+   * Nombre de relación (sin el prefijo del publicador, que el portal muestra aparte):
+   * {TablaPrincipal}_{1N|NN}_{TablaSecundaria}[_{Calificador}]  →  Auditor_1N_Sociedad_AuditorPrincipal
    */
-  function buildRelationshipName({ primary, secondary, type, pub, qualifier }) {
+  function buildRelationshipName({ primary, secondary, type, qualifier }) {
     if (!primary || !secondary || !type) return '';
-    let a = primary;
-    if (pub && a.startsWith(pub)) a = a.slice(pub.length);
-    return a + '_' + type + '_' + secondary + (qualifier ? '_' + qualifier : '');
+    const q = qualifier ? toPascal(String(qualifier).replace(/_/g, ' '), []) : '';
+    return primary + '_' + type + '_' + secondary + (q ? '_' + q : '');
   }
 
   /**
@@ -318,8 +350,8 @@
     const v = String(value || '');
     if (!v) return ['El nombre de la relación está vacío'];
     const issues = [];
-    if (!/^[a-z0-9]+(_[a-z0-9]+)*_(1N|NN)_[a-z0-9]+(_[a-z0-9]+)*$/.test(v)) {
-      issues.push('No sigue el patrón [tabla]_' + (type || '1N') + '_[tabla]');
+    if (!/^[A-Z][A-Za-z0-9]*_(1N|NN)_[A-Z][A-Za-z0-9]*(_[A-Z][A-Za-z0-9]*)?$/.test(v)) {
+      issues.push('No sigue el patrón TablaRelacionada_' + (type || '1N') + '_TablaActual (PascalCase)');
     } else if (type && !v.includes('_' + type + '_')) {
       issues.push('El tipo de relación debe ser ' + type);
     }
@@ -410,7 +442,7 @@
     DEFAULT_STOP_WORDS, DEFAULT_FORBIDDEN_COLUMNS, CATEGORIES, CHOICE_TYPE,
     stripAccents, normalizeText, detectType, detectBehavior, toSnake, cleanSuffix, cleanPrefix,
     suffixFor, buildName, validate, toPascal, patternLead,
-    buildPrimaryColumnName, validatePrimaryColumn, buildSolutionName, validateSolutionName, relationshipToken, buildRelationshipName, lookupQualifier, RELATIONSHIP_MAX,
+    buildPrimaryColumnName, validatePrimaryColumn, buildTableName, validateTableName, buildSolutionName, validateSolutionName, relationshipToken, buildRelationshipName, lookupQualifier, RELATIONSHIP_MAX,
     parsePortalRelationshipDefault, validateRelationship,
     defaultSettings, mergeSettings, settingsFromStandard,
     parseContext, resolveProject

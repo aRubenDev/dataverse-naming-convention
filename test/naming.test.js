@@ -114,27 +114,36 @@ t('contexto y proyecto', () => {
   assert.strictEqual(N.resolveProject(projects, { envId: 'otro' }).extraPrefix, '');
 });
 
-t('relaciones', () => {
+t('nombre de esquema de tabla en PascalCase', () => {
+  assert.strictEqual(N.buildTableName({ displayName: 'Punto orden del día', settings: S, extraPrefix: 'gs' }), 'gs_PuntoOrdenDia');
+  assert.strictEqual(N.buildTableName({ displayName: 'GS_Sociedad', settings: S, extraPrefix: 'gs' }), 'gs_Sociedad');
+  assert.strictEqual(N.buildTableName({ displayName: 'Sociedad', settings: S }), 'Sociedad');
+  assert.strictEqual(N.buildTableName({ displayName: '', settings: S, extraPrefix: 'gs' }), '');
+  assert.deepStrictEqual(N.validateTableName('gs_PuntoOrdenDia', { extraPrefix: 'gs' }), []);
+  assert.ok(N.validateTableName('PuntoOrdenDia', { extraPrefix: 'gs' })[0].includes('gs_'));
+  assert.strictEqual(N.validateTableName('gs_punto_orden_dia', { extraPrefix: 'gs' }).length, 1);
+});
+
+t('relaciones en PascalCase', () => {
   const pub = 'ecija_';
-  const tok = (logical, display) => N.relationshipToken({ logical, display, pub, settings: S });
-  // Formato del usuario: ecija_gs_sociedad_1N_ecija_gs_auditor (ecija_ inicial lo pone el portal)
-  assert.strictEqual(N.buildRelationshipName({ primary: tok('gs_sociedad'), secondary: tok('gs_auditor'), type: '1N', pub }), 'gs_sociedad_1N_ecija_gs_auditor');
-  assert.strictEqual(N.buildRelationshipName({ primary: tok('ecija_x'), secondary: tok('ecija_y'), type: '1N', pub }), 'x_1N_ecija_y');
-  // Sin nombre lógico: nombre para mostrar en snake_case
-  assert.strictEqual(N.buildRelationshipName({ primary: tok(null, 'Punto orden día'), secondary: tok('gs_acta'), type: '1N', pub }), 'punto_orden_dia_1N_ecija_gs_acta');
-  assert.strictEqual(N.buildRelationshipName({ primary: tok(null, 'Acta'), secondary: tok(null, 'Asistente de la Reunión'), type: 'NN', pub }), 'acta_NN_asistente_reunion');
-  assert.strictEqual(N.buildRelationshipName({ primary: '', secondary: 'acta', type: '1N', pub }), '');
-  // Valor por defecto del portal (diagnóstico real)
+  const tok = (logical, display, extraPrefix) => N.relationshipToken({ logical, display, pub, settings: S, extraPrefix });
+  assert.strictEqual(tok(null, 'Punto orden del día'), 'PuntoOrdenDia');
+  assert.strictEqual(tok('gs_auditor', 'Auditor'), 'Auditor');
+  assert.strictEqual(tok(null, 'GS_Sociedad', 'gs'), 'Sociedad');
+  assert.strictEqual(tok('ecija_gs_auditor', null, 'gs'), 'Auditor');
+  assert.strictEqual(N.buildRelationshipName({ primary: tok(null, 'Auditor'), secondary: tok(null, 'Sociedad'), type: '1N' }), 'Auditor_1N_Sociedad');
+  assert.strictEqual(N.buildRelationshipName({ primary: tok(null, 'Acta'), secondary: tok(null, 'Asistente de la Reunión'), type: 'NN' }), 'Acta_NN_AsistenteReunion');
+  assert.strictEqual(N.buildRelationshipName({ primary: '', secondary: 'Acta', type: '1N' }), '');
+  // Valor por defecto del portal (diagnóstico real): se sigue aprendiendo el nombre lógico
   assert.deepStrictEqual(
     N.parsePortalRelationshipDefault('gs_acta_puntos_orden_dia_lookup_ecija_gs_puntoordendia', { schemaPart: 'puntos_orden_dia_lookup', pub }),
     { current: 'gs_acta', related: 'gs_puntoordendia' });
-  assert.deepStrictEqual(
-    N.parsePortalRelationshipDefault('gs_acta_otro_esquema_ecija_gs_puntoordendia', { schemaPart: 'puntos_orden_dia_lookup', pub }),
-    { related: 'gs_puntoordendia' });
-  assert.deepStrictEqual(N.parsePortalRelationshipDefault('gs_sociedad_1N_ecija_gs_acta', { schemaPart: 'x', pub }), {});
-  assert.deepStrictEqual(N.validateRelationship('punto_orden_dia_1N_acta', { type: '1N' }), []);
+  assert.deepStrictEqual(N.parsePortalRelationshipDefault('Sociedad_1N_Acta', { schemaPart: 'x', pub }), {});
+  assert.deepStrictEqual(N.validateRelationship('PuntoOrdenDia_1N_Acta', { type: '1N' }), []);
+  assert.deepStrictEqual(N.validateRelationship('Auditor_1N_Sociedad_AuditorPrincipal', { type: '1N' }), []);
+  assert.strictEqual(N.validateRelationship('punto_orden_dia_1N_acta', { type: '1N' }).length, 1);
   assert.strictEqual(N.validateRelationship('gs_acta_puntos_orden_dia_lookup', { type: '1N' }).length, 1);
-  assert.ok(N.validateRelationship('acta_NN_contacto', { type: '1N' })[0].includes('1N'));
+  assert.ok(N.validateRelationship('Acta_NN_Contacto', { type: '1N' })[0].includes('1N'));
 });
 
 t('varias lookups a la misma tabla', () => {
@@ -148,14 +157,11 @@ t('varias lookups a la misma tabla', () => {
   assert.strictEqual(q('Puntos orden día', { logical: 'gs_puntoordendia', display: 'Punto orden día' }), '');
   assert.strictEqual(q('Auditores', aud), '');
   assert.strictEqual(q('Auditor principal', aud), 'auditor_principal');
-  assert.strictEqual(q('Auditor de la Sociedad', { display: 'Auditor' }), 'auditor_sociedad');
   assert.strictEqual(q('', aud), '');
-  const tok = l => N.relationshipToken({ logical: l, pub, settings: S });
   assert.strictEqual(
-    N.buildRelationshipName({ primary: tok('gs_auditor'), secondary: tok('gs_sociedad'), type: '1N', pub, qualifier: q('Auditor suplente', aud) }),
-    'gs_auditor_1N_ecija_gs_sociedad_auditor_suplente');
-  assert.deepStrictEqual(N.validateRelationship('gs_auditor_1N_ecija_gs_sociedad_auditor_suplente', { type: '1N', pub }), []);
-  const long = 'a'.repeat(50) + '_1N_' + 'b'.repeat(50);
+    N.buildRelationshipName({ primary: 'Auditor', secondary: 'Sociedad', type: '1N', qualifier: q('Auditor principal', aud) }),
+    'Auditor_1N_Sociedad_AuditorPrincipal');
+  const long = 'A'.repeat(50) + '_1N_' + 'B'.repeat(50);
   assert.ok(N.validateRelationship(long, { type: '1N', pub })[0].includes('100'));
 });
 

@@ -7,8 +7,9 @@
  * - Panel "Nueva opción" (opción global): prefijo de proyecto + sufijo _optionset y
  *   "PREFIJO_" en el nombre para mostrar.
  * - Paneles de Relaciones (1:N, N:1, N:N): nombre de la relación y de la columna
- *   de búsqueda.
- * - Panel "Nueva tabla": nombre de esquema de la columna principal (IDNombreTabla).
+ *   de búsqueda. Relación en PascalCase: Relacionada_1N_Actual.
+ * - Panel "Nueva tabla": nombre de esquema de la tabla (gs_NombreTabla) y de la
+ *   columna principal (IDNombreTabla).
  * - Panel "Nueva solución": nombre único BASE_Nombre.
  * - Si el usuario escribe a mano en un campo gestionado, deja de tocarlo.
  * - Avisos de cumplimiento no bloqueantes bajo cada campo gestionado.
@@ -426,7 +427,7 @@
   function manageRelationship(relInput, { primary, secondary, type, proj, onForeignValue, qualifier }) {
     let P = null, S = null, Q = '', PUB = '';
     const describe = t => !t ? 'no detectada'
-      : (t.logical ? t.logical + ' (nombre lógico)' : `${t.display} (nombre para mostrar · ${t.source}; nombre lógico aún no conocido)`);
+      : (t.display ? `${t.display} (nombre para mostrar · ${t.source})` : `${t.logical} (nombre lógico; nombre para mostrar no detectado)`);
     manageField(relInput, {
       publisherPrefix: proj.publisherPrefix,
       onForeignValue,
@@ -434,23 +435,22 @@
         P = primary(); S = secondary(); PUB = pub || '';
         if (!P || !S || !type) return '';
         Q = qualifier ? qualifier(P, pub) : '';
-        const tp = N.relationshipToken({ logical: P.logical, display: P.display, pub, settings });
-        const ts = N.relationshipToken({ logical: S.logical, display: S.display, pub, settings });
-        return N.buildRelationshipName({ primary: tp, secondary: ts, type, pub, qualifier: Q });
+        const tok = t => N.relationshipToken({ logical: t.logical, display: t.display, pub, settings, extraPrefix: proj.extraPrefix });
+        return N.buildRelationshipName({ primary: tok(P), secondary: tok(S), type, qualifier: Q });
       },
       evaluate: value => {
         const details = ['Tabla principal: ' + describe(P), 'Tabla secundaria: ' + describe(S)];
-        if (Q) details.push(`Calificador "_${Q}": la lookup no se llama como la tabla relacionada (evita duplicados)`);
+        if (Q) details.push(`Calificador "_${N.toPascal(Q.replace(/_/g, ' '), [])}": la lookup no se llama como la tabla relacionada (evita duplicados)`);
         if (!type) return { level: 'warn', msg: 'No se detecta el tipo de relación (1:N / N:N)', details };
         if (!P || !S) {
           const miss = !P && !S ? 'las tablas' : !P ? 'la tabla principal' : 'la tabla secundaria';
           return { level: 'warn', msg: `No se detecta ${miss}: no se genera el nombre de la relación`, details };
         }
-        const name = t => t.logical || t.display;
+        const name = t => t.display || t.logical;
         const issues = N.validateRelationship(value, { type, pub: PUB });
-        const partial = !P.logical || !S.logical;
+        const partial = !P.display || !S.display;
         if (!issues.length && partial) {
-          return { level: 'warn', msg: `Relación ${type}: ${name(P)} → ${name(S)} · falta el nombre lógico de ${!P.logical && !S.logical ? 'ambas tablas' : 'una tabla'} (se usa el nombre para mostrar)`, details };
+          return { level: 'warn', msg: `Relación ${type}: ${name(P)} → ${name(S)} · falta el nombre para mostrar de ${!P.display && !S.display ? 'ambas tablas' : 'una tabla'} (se usa el nombre lógico)`, details };
         }
         return issuesResult(issues, `Cumple estándar · Relación ${type}: ${name(P)} → ${name(S)}`, details);
       }
@@ -678,12 +678,14 @@
       // Pestañas Propiedades / Columna principal: solo se ve una cada vez.
       if (!onPrimaryTab) {
         if (displays[0] && displays[0].value.trim()) tableDisplayCache.set(c, displays[0].value.trim());
+        manageTableSchema(c, displays[0], schemas[0], proj);
         return;
       }
       primarySchema = schemas[0] || null;
     } else {
       // Todo en una vista: el primer nombre para mostrar es la tabla y el segundo esquema, la columna principal.
       if (displays[0] && displays[0].value.trim()) tableDisplayCache.set(c, displays[0].value.trim());
+      manageTableSchema(c, displays[0], schemas[0], proj);
       primarySchema = schemas[1] || null;
     }
     if (!primarySchema) { expandAdvanced(c); return; }
@@ -697,6 +699,22 @@
         if (!tableDisplay) return { level: 'warn', msg: 'Escribe antes el nombre de la tabla en Propiedades para generar IDNombreTabla' };
         const details = ['Tabla: ' + tableDisplay, 'Nombre lógico resultante: ' + value.toLowerCase()];
         return issuesResult(N.validatePrimaryColumn(value, settings), 'Cumple estándar ECIJA · Columna principal', details);
+      }
+    });
+  }
+
+  /** Nombre de esquema de la tabla: gs_PuntoOrdenDia (el portal pone delante el del publicador). */
+  function manageTableSchema(c, display, schema, proj) {
+    if (!display) return;
+    if (!schema) { expandAdvanced(c); return; }
+    if (isLocked(schema)) { dropState(schema); return; }
+    manageField(schema, {
+      expected: N.buildTableName({ displayName: display.value, settings, extraPrefix: proj.extraPrefix }),
+      publisherPrefix: proj.publisherPrefix,
+      evaluate: value => {
+        const details = ['Nombre lógico resultante: ' + ((states.get(schema) || {}).pub || '') + value.toLowerCase()];
+        if (proj.extraPrefix) details.push(`Prefijo de proyecto: ${proj.extraPrefix}_ (${proj.source === 'solution' ? 'solución' : 'entorno'})`);
+        return issuesResult(N.validateTableName(value, { extraPrefix: proj.extraPrefix }), 'Cumple estándar ECIJA · Tabla', details);
       }
     });
   }

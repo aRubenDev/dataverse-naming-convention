@@ -65,21 +65,22 @@ Tras modificar el código: botón ⟳ de la extensión y recarga la pestaña del
 | Escribes tú en el nombre lógico | Deja de tocarlo en ese panel (aunque cambies el tipo) |
 | Botón **Regenerar** del aviso | Vuelve al modo automático |
 | Panel "Nueva opción" (opción global) | Mismo cálculo con `_optionset` y el prefijo de proyecto y, si hay prefijo de proyecto, el nombre para mostrar empieza por él en mayúsculas (`CRM_Estado`). Se añade una vez; si lo borras, se respeta |
-| Columna de tipo Búsqueda | Además, nombre de la relación: `[tabla relacionada]_1N_[tabla actual]` |
-| Relaciones → Uno a varios | `[tabla actual]_1N_[tabla relacionada]` + columna de búsqueda con `_lookup` |
-| Relaciones → Varios a uno | `[tabla relacionada]_1N_[tabla actual]` + columna de búsqueda con `_lookup` |
-| Relaciones → Varios a varios | `[tabla actual]_NN_[tabla relacionada]` |
+| Columna de tipo Búsqueda | Además, nombre de la relación: `TablaRelacionada_1N_TablaActual` |
+| Relaciones → Uno a varios | `TablaActual_1N_TablaRelacionada` + columna de búsqueda con `_lookup` |
+| Relaciones → Varios a uno | `TablaRelacionada_1N_TablaActual` + columna de búsqueda con `_lookup` |
+| Relaciones → Varios a varios | `TablaActual_NN_TablaRelacionada` |
 | Botón **Guardar y crear otra** (panel Nueva columna) | Pulsa el *Guardar* del portal, espera a que se cierre el panel y vuelve a abrir uno nuevo con el mismo botón que usaste (*+ Nueva columna* o *Nuevo → Columna*). Los botones del portal no cambian |
+| Panel **Nueva tabla** → nombre de esquema | Prefijo de proyecto + nombre en PascalCase: *Punto orden del día* → `ecija_gs_PuntoOrdenDia` (nombre lógico `ecija_gs_puntoordendia`) |
 | Panel **Nueva tabla** → columna principal | Nombre de esquema `ID` + nombre de la tabla en PascalCase: *Sociedad* → `ecj_IDSociedad` (nombre lógico `ecj_idsociedad`). Si el nombre de la tabla empieza por el prefijo de proyecto (`GS_Sociedad`), se omite. El nombre de la tabla se toma de la pestaña Propiedades |
 | Panel **Nueva solución** | Nombre `BASE_` + nombre para mostrar en PascalCase: *Gestión societaria* → `BASE_GestionSocietaria` |
 | Editar columna o tabla existente | No hace nada |
 
-En las relaciones cada tabla se escribe como **prefijo del publicador + nombre lógico**:
-`ecija_gs_sociedad_1N_ecija_gs_auditor`. Los nombres lógicos se aprenden del valor que
-propone el portal al crear un lookup (`gs_acta_<columna>_ecija_gs_puntoordendia`) y se
-guardan en una caché local (vaciable desde la configuración). Si aún no se conoce el
-nombre lógico de una tabla, se usa su nombre para mostrar en snake_case y el aviso lo
-indica. La tabla actual se identifica por la URL, la ruta de navegación o el título.
+En las relaciones cada tabla se escribe con su **nombre para mostrar en PascalCase**, sin
+prefijo de proyecto; el del publicador lo pone el portal delante:
+`ecija_Auditor_1N_Sociedad`. Si no se detecta el nombre para mostrar de una tabla, se usa
+su nombre lógico (aprendido del valor que propone el portal al crear un lookup y guardado
+en una caché local) y el aviso lo indica. La tabla actual se identifica por la URL, la
+ruta de navegación o el título.
 
 **Varias lookups a la misma tabla.** Si el nombre de la columna de búsqueda no coincide
 con el de la tabla relacionada (se toleran singular/plural), se añade al final de la
@@ -87,8 +88,8 @@ relación para que no se repita:
 
 | Lookup | Tabla relacionada | Relación |
 |---|---|---|
-| Auditor | gs_auditor | `gs_auditor_1N_ecija_gs_sociedad` |
-| Auditor principal | gs_auditor | `gs_auditor_1N_ecija_gs_sociedad_auditor_principal` |
+| Auditor | Auditor | `Auditor_1N_Sociedad` |
+| Auditor principal | Auditor | `Auditor_1N_Sociedad_AuditorPrincipal` |
 
 El aviso marca también si el nombre supera los 100 caracteres de Dataverse.
 
@@ -101,7 +102,8 @@ Mientras filtras en un desplegable con búsqueda (p. ej. "Tabla relacionada") la
 extensión no escribe en ningún campo, y si el portal mueve el foco al rellenar un
 campo, lo devuelve a donde estabas.
 
-El aviso bajo el nombre lógico indica si cumple (snake_case, sufijo, prefijo de proyecto en
+El aviso bajo el nombre lógico indica si cumple (snake_case en columnas y PascalCase en
+tablas y relaciones, sufijo, prefijo de proyecto en
 opciones globales, columnas de estado prohibidas).
 Es solo informativo: nunca impide guardar.
 
