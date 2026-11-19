@@ -86,6 +86,10 @@
   // Columnas de estado propias prohibidas: usar Estado / Razón para el estado nativos.
   const DEFAULT_FORBIDDEN_COLUMNS = ['estado_choice', 'estadoactual_choice', 'activo_bool', 'estadoregistro_txt'];
 
+  // Columna principal de tabla y nombre de solución (dataverse.primaryColumn / dataverse.solution).
+  const DEFAULT_PRIMARY_PATTERN = '^ID[A-Z][A-Za-z0-9]+$';
+  const DEFAULT_SOLUTION_PATTERN = '^BASE_[A-Za-z0-9]+$';
+
   // Versión del esquema de configuración guardada (2 = sufijos del estándar de validaciones 1.0).
   const SETTINGS_VERSION = 2;
 
@@ -149,6 +153,67 @@
     const pre = cleanPrefix(extraPrefix);
     if (pre && body !== pre && !body.startsWith(pre + '_')) body = pre + '_' + body;
     return body + suffix;
+  }
+
+  /** "Punto de orden del día" -> "PuntoOrdenDia" (sin tildes ni palabras vacías). */
+  function toPascal(text, stopWords) {
+    return toSnake(text, stopWords).split('_').filter(Boolean)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
+  }
+
+  /** Prefijo literal al inicio de un patrón: '^ID[A-Z]…' -> 'ID', '^BASE_[…' -> 'BASE_'. */
+  function patternLead(pattern) {
+    const m = String(pattern || '').match(/^\^([A-Za-z0-9_]+)/);
+    return m ? m[1] : '';
+  }
+
+  function safeRegExp(pattern, fallback) {
+    try { return new RegExp(pattern || fallback); } catch (e) { return new RegExp(fallback); }
+  }
+
+  /** Quita el prefijo de proyecto si el nombre para mostrar empieza por él ("GS Sociedad", "GS_Sociedad"). */
+  function withoutProjectWord(text, extraPrefix) {
+    const pre = cleanPrefix(extraPrefix);
+    const snake = toSnake(text, []);
+    return pre && snake.startsWith(pre + '_') ? snake.slice(pre.length + 1) : text;
+  }
+
+  /**
+   * Nombre de esquema de la columna principal (sin el prefijo del publicador):
+   * tabla "Sociedad" -> IDSociedad (nombre lógico: idsociedad).
+   */
+  function buildPrimaryColumnName({ tableDisplay, settings, extraPrefix }) {
+    const stop = (settings && settings.stopWords) || DEFAULT_STOP_WORDS;
+    const core = toPascal(withoutProjectWord(tableDisplay || '', extraPrefix), stop);
+    if (!core) return '';
+    return patternLead((settings && settings.primaryColumnPattern) || DEFAULT_PRIMARY_PATTERN) + core;
+  }
+
+  function validatePrimaryColumn(value, settings) {
+    const v = String(value || '');
+    if (!v) return ['El nombre de esquema está vacío'];
+    const pattern = (settings && settings.primaryColumnPattern) || DEFAULT_PRIMARY_PATTERN;
+    return safeRegExp(pattern, DEFAULT_PRIMARY_PATTERN).test(v)
+      ? [] : [`No sigue el patrón de columna principal ${patternLead(pattern)}NombreTabla`];
+  }
+
+  /** Nombre (único) de la solución: "Gestión societaria" -> BASE_GestionSocietaria. */
+  function buildSolutionName({ displayName, settings }) {
+    const lead = patternLead((settings && settings.solutionPattern) || DEFAULT_SOLUTION_PATTERN);
+    const stop = (settings && settings.stopWords) || DEFAULT_STOP_WORDS;
+    let words = toSnake(displayName || '', []);
+    const l = lead.replace(/_$/, '').toLowerCase();
+    if (l && (words === l || words.startsWith(l + '_'))) words = words.slice(l.length + 1);
+    const core = toPascal(words.replace(/_/g, ' '), stop);
+    return core ? lead + core : '';
+  }
+
+  function validateSolutionName(value, settings) {
+    const v = String(value || '');
+    if (!v) return ['El nombre de la solución está vacío'];
+    const pattern = (settings && settings.solutionPattern) || DEFAULT_SOLUTION_PATTERN;
+    return safeRegExp(pattern, DEFAULT_SOLUTION_PATTERN).test(v)
+      ? [] : [`No sigue el patrón de solución ${patternLead(pattern)}Nombre`];
   }
 
   /** Devuelve la lista de incumplimientos (vacía = cumple). Nunca bloquea nada. */
@@ -274,7 +339,9 @@
       version: SETTINGS_VERSION,
       suffixes,
       stopWords: DEFAULT_STOP_WORDS.slice(),
-      forbiddenColumns: DEFAULT_FORBIDDEN_COLUMNS.slice()
+      forbiddenColumns: DEFAULT_FORBIDDEN_COLUMNS.slice(),
+      primaryColumnPattern: DEFAULT_PRIMARY_PATTERN,
+      solutionPattern: DEFAULT_SOLUTION_PATTERN
     };
   }
 
@@ -308,6 +375,11 @@
     if (m) out.suffixes.optionset = '_' + m[1].toLowerCase();
     const fc = dv.entityStateManagement && dv.entityStateManagement.forbiddenColumns;
     if (Array.isArray(fc)) out.forbiddenColumns = fc.map(x => String(x).toLowerCase().trim()).filter(Boolean);
+    const valid = x => { try { new RegExp(x); return typeof x === 'string' && !!x; } catch (e) { return false; } };
+    const pc = dv.primaryColumn && dv.primaryColumn.schemaPattern;
+    if (valid(pc)) out.primaryColumnPattern = pc;
+    const sp = dv.solution && dv.solution.pattern;
+    if (valid(sp)) out.solutionPattern = sp;
     return out;
   }
 
@@ -337,7 +409,8 @@
   const api = {
     DEFAULT_STOP_WORDS, DEFAULT_FORBIDDEN_COLUMNS, CATEGORIES, CHOICE_TYPE,
     stripAccents, normalizeText, detectType, detectBehavior, toSnake, cleanSuffix, cleanPrefix,
-    suffixFor, buildName, validate, relationshipToken, buildRelationshipName, lookupQualifier, RELATIONSHIP_MAX,
+    suffixFor, buildName, validate, toPascal, patternLead,
+    buildPrimaryColumnName, validatePrimaryColumn, buildSolutionName, validateSolutionName, relationshipToken, buildRelationshipName, lookupQualifier, RELATIONSHIP_MAX,
     parsePortalRelationshipDefault, validateRelationship,
     defaultSettings, mergeSettings, settingsFromStandard,
     parseContext, resolveProject

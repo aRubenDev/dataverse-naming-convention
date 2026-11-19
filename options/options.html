@@ -41,6 +41,15 @@
     </section>
 
     <section class="card">
+      <h2>Tablas y soluciones</h2>
+      <label for="primaryColumnPattern">Patrón del nombre de esquema de la columna principal</label>
+      <input type="text" id="primaryColumnPattern" class="mono">
+      <label for="solutionPattern">Patrón del nombre de la solución</label>
+      <input type="text" id="solutionPattern" class="mono">
+      <p class="hint">Expresiones regulares. El texto fijo del principio (<code>ID</code>, <code>BASE_</code>) se usa para generar el nombre: tabla <em>Sociedad</em> → <code>IDSociedad</code>; solución <em>Gestión societaria</em> → <code>BASE_GestionSocietaria</code>.</p>
+    </section>
+
+    <section class="card">
       <h2>Palabras vacías</h2>
       <textarea id="stopWords" rows="3" class="mono"></textarea>
       <p class="hint">Separadas por comas. Se eliminan del nombre: <em>Fecha de Alta</em> → <code>fecha_alta</code>.

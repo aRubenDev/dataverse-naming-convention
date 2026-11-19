@@ -36,7 +36,8 @@ no `importe_dec_calc`). Las columnas de estado propias (`estado_choice`, `activo
 se marcan en el aviso: hay que usar *Estado* y *Razón para el estado* nativos.
 
 Desde **Configuración avanzada → Importar JSON** se puede cargar directamente el JSON de
-validaciones ECIJA: se toman los sufijos, el de opción global y las columnas prohibidas.
+validaciones ECIJA: se toman los sufijos, el de opción global, las columnas prohibidas y los
+patrones de columna principal y de solución.
 Al actualizar desde una versión anterior a la 1.6, los sufijos guardados se sustituyen por
 los del estándar.
 
@@ -69,7 +70,9 @@ Tras modificar el código: botón ⟳ de la extensión y recarga la pestaña del
 | Relaciones → Varios a uno | `[tabla relacionada]_1N_[tabla actual]` + columna de búsqueda con `_lookup` |
 | Relaciones → Varios a varios | `[tabla actual]_NN_[tabla relacionada]` |
 | Botón **Guardar y crear otra** (panel Nueva columna) | Pulsa el *Guardar* del portal, espera a que se cierre el panel y vuelve a abrir uno nuevo con el mismo botón que usaste (*+ Nueva columna* o *Nuevo → Columna*). Los botones del portal no cambian |
-| Editar columna existente / crear tabla | No hace nada |
+| Panel **Nueva tabla** → columna principal | Nombre de esquema `ID` + nombre de la tabla en PascalCase: *Sociedad* → `ecj_IDSociedad` (nombre lógico `ecj_idsociedad`). Si el nombre de la tabla empieza por el prefijo de proyecto (`GS_Sociedad`), se omite. El nombre de la tabla se toma de la pestaña Propiedades |
+| Panel **Nueva solución** | Nombre `BASE_` + nombre para mostrar en PascalCase: *Gestión societaria* → `BASE_GestionSocietaria` |
+| Editar columna o tabla existente | No hace nada |
 
 En las relaciones cada tabla se escribe como **prefijo del publicador + nombre lógico**:
 `ecija_gs_sociedad_1N_ecija_gs_auditor`. Los nombres lógicos se aprenden del valor que

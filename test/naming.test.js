@@ -86,6 +86,23 @@ t('importar JSON de validaciones ECIJA', () => {
   assert.strictEqual(N.settingsFromStandard({ format: 'ecija-naming' }), null);
 });
 
+t('columna principal y solución', () => {
+  assert.strictEqual(N.buildPrimaryColumnName({ tableDisplay: 'Sociedad', settings: S }), 'IDSociedad');
+  assert.strictEqual(N.buildPrimaryColumnName({ tableDisplay: 'Punto de orden del día', settings: S }), 'IDPuntoOrdenDia');
+  assert.strictEqual(N.buildPrimaryColumnName({ tableDisplay: 'GS_Sociedad', settings: S, extraPrefix: 'gs' }), 'IDSociedad');
+  assert.strictEqual(N.buildPrimaryColumnName({ tableDisplay: '', settings: S }), '');
+  assert.deepStrictEqual(N.validatePrimaryColumn('IDSociedad', S), []);
+  assert.strictEqual(N.validatePrimaryColumn('Name', S).length, 1);
+  assert.strictEqual(N.validatePrimaryColumn('ID_sociedad', S).length, 1);
+  assert.strictEqual(N.buildSolutionName({ displayName: 'Gestión societaria', settings: S }), 'BASE_GestionSocietaria');
+  assert.strictEqual(N.buildSolutionName({ displayName: 'BASE Gestión de la sociedad', settings: S }), 'BASE_GestionSociedad');
+  assert.deepStrictEqual(N.validateSolutionName('BASE_GS', S), []);
+  assert.strictEqual(N.validateSolutionName('GestionSocietaria', S).length, 1);
+  const s = N.settingsFromStandard({ dataverse: { primaryColumn: { schemaPattern: '^PK[A-Z][A-Za-z0-9]+$' }, solution: { pattern: '^SOL_[A-Za-z0-9]+$' } } });
+  assert.strictEqual(N.buildPrimaryColumnName({ tableDisplay: 'Acta', settings: s }), 'PKActa');
+  assert.strictEqual(N.buildSolutionName({ displayName: 'Actas', settings: s }), 'SOL_Actas');
+});
+
 t('contexto y proyecto', () => {
   const ctx = N.parseContext('https://make.powerapps.com/environments/Default-abc/solutions/11111111-2222-3333-4444-555555555555/objects/all');
   assert.strictEqual(ctx.envId, 'default-abc');

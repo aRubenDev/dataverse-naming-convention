@@ -48,6 +48,7 @@
     })).slice(-8),
     pageButtons: [...document.querySelectorAll('button,[role=menuitem]')].filter(b => !b.closest('[role="dialog"],.ms-Panel,.fui-OverlayDrawer'))
       .map(b => n(b.textContent || b.getAttribute('aria-label')).slice(0, 40)).filter(t => /nuev|new|column|agreg|add/.test(t)).slice(0, 10),
+    tabs: [...p.querySelectorAll('[role=tab]')].map(t => ({ text: n(t.textContent).slice(0, 40), sel: t.getAttribute('aria-selected') })),
     expanders: [...p.querySelectorAll('[aria-expanded]')].map(b => ({ text: n(b.textContent).slice(0, 50), exp: b.getAttribute('aria-expanded') }))
   };
   copy(JSON.stringify(out, null, 1));

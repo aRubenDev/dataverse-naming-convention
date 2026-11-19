@@ -8,6 +8,8 @@
  *   "PREFIJO_" en el nombre para mostrar.
  * - Paneles de Relaciones (1:N, N:1, N:N): nombre de la relación y de la columna
  *   de búsqueda.
+ * - Panel "Nueva tabla": nombre de esquema de la columna principal (IDNombreTabla).
+ * - Panel "Nueva solución": nombre único BASE_Nombre.
  * - Si el usuario escribe a mano en un campo gestionado, deja de tocarlo.
  * - Avisos de cumplimiento no bloqueantes bajo cada campo gestionado.
  */
@@ -51,6 +53,10 @@
     relatedTable: [/^tabla relacionada\b/, /^related table\b/],
     currentTable: [/^tabla actual\b/, /^current table\b/, /^tabla principal\b/, /^primary table\b/, /^esta tabla\b/]
   };
+  const TABLE_HEADING = /^(nueva tabla|new table|crear (una )?tabla|create (a )?table)\b/;
+  const SOLUTION_HEADING = /^(nueva solucion|new solution|crear (una )?solucion|create (a )?solution)\b/;
+  const PRIMARY_TAB = /columna principal|primary column|columna de nombre principal|primary name column/;
+  const SOLUTION_NAME = [/^name$/, /^nombre$/, /^nombre unico\b/, /^unique name\b/];
   const CHOICE_HEADING = /(new choice|nueva opcion|nueva eleccion|nuevo conjunto de opciones|global choice|opcion global|^choice$|^opcion$|^eleccion$)/;
   const NOT_CHOICE_HEADING = /(tabla|table|columna|column|editar|edit|relacion|relationship)/;
   const GENERIC_CRUMB = /^(tablas?|tables?|columnas?|columns?|relaciones|relationships?|claves|keys|formularios|forms|vistas|views|datos|data|soluciones|solutions?|objetos|objects|todos?|all|power apps|inicio|home|campos|fields|reglas de negocio|business rules|paneles|dashboards|graficos|charts|comandos|commands|mensajes|messages|informacion general|overview|propiedades|properties|configuracion|settings|herramientas|tools|esquema|schema|mas|more|\W*)$/;
@@ -656,6 +662,60 @@
     if (leaf) leaf.textContent = text; else b.textContent = text;
   }
 
+  // ---------- Nueva tabla: columna principal ----------
+  const headingMatches = (c, re) => headingTexts(c).some(t => t && t.length < 60 && re.test(t));
+  const tableDisplayCache = new WeakMap(); // contenedor -> nombre para mostrar de la tabla
+
+  function processTablePanel(c, proj) {
+    const tabs = Array.from(c.querySelectorAll('[role="tab"]'));
+    const selected = tabs.find(t => t.getAttribute('aria-selected') === 'true');
+    const onPrimaryTab = !!selected && PRIMARY_TAB.test(norm(selected.textContent));
+    const displays = findControls(c, LBL.display, INPUT_SEL).filter(visible);
+    const schemas = findControls(c, LBL.schema, INPUT_SEL).filter(el => visible(el) && !displays.includes(el));
+
+    let primarySchema = null;
+    if (tabs.length) {
+      // Pestañas Propiedades / Columna principal: solo se ve una cada vez.
+      if (!onPrimaryTab) {
+        if (displays[0] && displays[0].value.trim()) tableDisplayCache.set(c, displays[0].value.trim());
+        return;
+      }
+      primarySchema = schemas[0] || null;
+    } else {
+      // Todo en una vista: el primer nombre para mostrar es la tabla y el segundo esquema, la columna principal.
+      if (displays[0] && displays[0].value.trim()) tableDisplayCache.set(c, displays[0].value.trim());
+      primarySchema = schemas[1] || null;
+    }
+    if (!primarySchema) { expandAdvanced(c); return; }
+    if (isLocked(primarySchema)) { dropState(primarySchema); return; }
+
+    const tableDisplay = tableDisplayCache.get(c) || '';
+    manageField(primarySchema, {
+      expected: N.buildPrimaryColumnName({ tableDisplay, settings, extraPrefix: proj.extraPrefix }),
+      publisherPrefix: proj.publisherPrefix,
+      evaluate: value => {
+        if (!tableDisplay) return { level: 'warn', msg: 'Escribe antes el nombre de la tabla en Propiedades para generar IDNombreTabla' };
+        const details = ['Tabla: ' + tableDisplay, 'Nombre lógico resultante: ' + value.toLowerCase()];
+        return issuesResult(N.validatePrimaryColumn(value, settings), 'Cumple estándar ECIJA · Columna principal', details);
+      }
+    });
+  }
+
+  // ---------- Nueva solución: nombre BASE_… ----------
+  function processSolutionPanel(c) {
+    const display = findControl(c, LBL.display, INPUT_SEL);
+    if (!display) return;
+    const name = findControls(c, SOLUTION_NAME, INPUT_SEL).find(el => el !== display);
+    if (!name) return;
+    if (isLocked(name)) { dropState(name); return; }
+    manageField(name, {
+      expected: N.buildSolutionName({ displayName: display.value, settings }),
+      publisherPrefix: '',
+      evaluate: value => issuesResult(N.validateSolutionName(value, settings), 'Cumple estándar ECIJA · Solución',
+        ['El publicador debe ser el mismo en todas las soluciones del proyecto (mismo prefijo en tablas y opciones globales)'])
+    });
+  }
+
   // ---------- Procesado de paneles ----------
   const prefixedDisplays = new WeakSet();
 
@@ -753,6 +813,8 @@
   }
 
   function processContainer(c, proj) {
+    if (headingMatches(c, SOLUTION_HEADING)) return processSolutionPanel(c);
+    if (headingMatches(c, TABLE_HEADING)) return processTablePanel(c, proj);
     const display = findControl(c, LBL.display, INPUT_SEL);
     const dataType = findTypeControl(c);
     if (display && dataType) return processColumnPanel(c, proj, display, dataType);
@@ -762,7 +824,7 @@
     if (hasRel || kind) return processRelationshipPanel(c, proj, kind);
 
     if (display && isChoicePanel(c)) return processChoicePanel(c, proj, display);
-    // Tablas u otros paneles: no se toca.
+    // Editar tabla u otros paneles: no se toca.
   }
 
   // ---------- Bucle principal ----------

@@ -19,6 +19,8 @@
     $('saveAndNew').checked = settings.saveAndNew;
     $('stopWords').value = settings.stopWords.join(', ');
     $('forbiddenColumns').value = settings.forbiddenColumns.join(', ');
+    $('primaryColumnPattern').value = settings.primaryColumnPattern;
+    $('solutionPattern').value = settings.solutionPattern;
 
     const tb = $('suffixRows');
     tb.textContent = '';
@@ -79,6 +81,10 @@
     settings.saveAndNew = $('saveAndNew').checked;
     settings.stopWords = $('stopWords').value.split(/[,\n;]+/).map(w => N.normalizeText(w)).filter(Boolean);
     settings.forbiddenColumns = $('forbiddenColumns').value.split(/[,\n;\s]+/).map(w => w.toLowerCase().trim()).filter(Boolean);
+    const d = N.defaultSettings();
+    const re = (v, def) => { try { new RegExp(v); return v.trim() || def; } catch (e) { return def; } };
+    settings.primaryColumnPattern = re($('primaryColumnPattern').value, d.primaryColumnPattern);
+    settings.solutionPattern = re($('solutionPattern').value, d.solutionPattern);
     document.querySelectorAll('#suffixRows input').forEach(i => {
       settings.suffixes[i.dataset.cat] = N.cleanSuffix(i.value) || N.CATEGORIES.find(c => c.key === i.dataset.cat).suffix;
     });
