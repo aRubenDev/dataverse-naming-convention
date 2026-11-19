@@ -1,7 +1,7 @@
 /*
  * ECIJA Dataverse Naming — content script para make.powerapps.com (interfaz moderna).
  *
- * - Panel "Nueva columna": nombre de esquema en snake_case + sufijo del tipo
+ * - Panel "Nueva columna": nombre de esquema en PascalCase + sufijo del tipo
  *   (o _calc / _rollup si el comportamiento es calculado / acumulativo), sin prefijo
  *   de proyecto. Si es Búsqueda, además el nombre de la relación: [relacionada]_1N_[actual].
  * - Panel "Nueva opción" (opción global): prefijo de proyecto + sufijo _optionset y
@@ -424,8 +424,8 @@
    * primary/secondary: () => { display, logical, source } | null
    * (funciones para que se evalúen después de aprender del valor del portal)
    */
-  function manageRelationship(relInput, { primary, secondary, type, proj, onForeignValue, qualifier }) {
-    let P = null, S = null, Q = '', PUB = '';
+  function manageRelationship(relInput, { primary, secondary, type, proj, onForeignValue }) {
+    let P = null, S = null, PUB = '';
     const describe = t => !t ? 'no detectada'
       : (t.display ? `${t.display} (nombre para mostrar · ${t.source})` : `${t.logical} (nombre lógico; nombre para mostrar no detectado)`);
     manageField(relInput, {
@@ -434,13 +434,11 @@
       expected: pub => {
         P = primary(); S = secondary(); PUB = pub || '';
         if (!P || !S || !type) return '';
-        Q = qualifier ? qualifier(P, pub) : '';
         const tok = t => N.relationshipToken({ logical: t.logical, display: t.display, pub, settings, extraPrefix: proj.extraPrefix });
-        return N.buildRelationshipName({ primary: tok(P), secondary: tok(S), type, qualifier: Q });
+        return N.buildRelationshipName({ primary: tok(P), secondary: tok(S), type });
       },
       evaluate: value => {
         const details = ['Tabla principal: ' + describe(P), 'Tabla secundaria: ' + describe(S)];
-        if (Q) details.push(`Calificador "_${N.toPascal(Q.replace(/_/g, ' '), [])}": la lookup no se llama como la tabla relacionada (evita duplicados)`);
         if (!type) return { level: 'warn', msg: 'No se detecta el tipo de relación (1:N / N:N)', details };
         if (!P || !S) {
           const miss = !P && !S ? 'las tablas' : !P ? 'la tabla principal' : 'la tabla secundaria';
@@ -763,9 +761,6 @@
         secondary: () => tableInfo(cur && cur.name, cur && cur.source, true),
         type: '1N',
         proj,
-        qualifier: (related, pub) => N.lookupQualifier({
-          lookupDisplay: display.value, related, pub, extraPrefix: proj.extraPrefix, settings
-        }),
         // El valor por defecto del portal contiene los nombres lógicos de ambas tablas.
         onForeignValue: value => {
           const pub = detectAdornment(relInput) || proj.publisherPrefix || '';

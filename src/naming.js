@@ -138,21 +138,43 @@
   }
 
   /**
-   * Construye la parte editable del nombre lógico (sin el prefijo del publicador).
-   * prefijoProyecto + nombre_en_snake + sufijo
+   * Construye la parte editable del nombre de esquema (sin el prefijo del publicador):
+   *   columna:        NombreEnPascalCase + sufijo          → TipoMovimiento_choice
+   *   opción global:  prefijoProyecto_ + PascalCase + sufijo → gs_TipoMovimiento_optionset
    */
   function buildName({ displayName, category, settings, extraPrefix }) {
     const stop = (settings && settings.stopWords) || DEFAULT_STOP_WORDS;
-    const core = toSnake(displayName, stop);
-    if (!core) return '';
+    const pre = cleanPrefix(extraPrefix);
+    let words = toSnake(withoutProjectWord(displayName || '', pre), stop).split('_').filter(Boolean);
     const suffix = suffixFor(category, settings);
     const sb = suffix.slice(1);
-    let body = core;
-    // Evita "estado_optionset_optionset" si el nombre ya trae el sufijo.
-    if (sb && body !== sb && body.endsWith('_' + sb)) body = body.slice(0, -(sb.length + 1));
+    // Evita "TipoMovimientoChoice_choice" si el nombre ya trae el sufijo.
+    if (sb && words.length > 1 && words.join('_').endsWith('_' + sb)) words = words.slice(0, -sb.split('_').length);
+    const core = toPascal(words.join(' '), []);
+    if (!core) return '';
+    return (pre ? pre + '_' : '') + core + suffix;
+  }
+
+  /** Devuelve la lista de incumplimientos (vacía = cumple). Nunca bloquea nada. */
+  function validate(value, { category, settings, extraPrefix }) {
+    const issues = [];
+    const v = String(value || '');
+    if (!v) return ['El nombre de esquema está vacío'];
+    let core = v;
     const pre = cleanPrefix(extraPrefix);
-    if (pre && body !== pre && !body.startsWith(pre + '_')) body = pre + '_' + body;
-    return body + suffix;
+    if (pre) {
+      if (core.startsWith(pre + '_')) core = core.slice(pre.length + 1);
+      else issues.push('No empieza por el prefijo de proyecto ' + pre + '_');
+    }
+    if (category) {
+      const suffix = suffixFor(category, settings);
+      if (suffix && !core.endsWith(suffix)) issues.push('No termina en ' + suffix);
+      else if (suffix) core = core.slice(0, -suffix.length);
+    }
+    if (!/^[A-Z][A-Za-z0-9]*$/.test(core)) issues.push('El nombre no está en PascalCase (sin espacios, tildes ni guiones bajos)');
+    const forbidden = (settings && settings.forbiddenColumns) || DEFAULT_FORBIDDEN_COLUMNS;
+    if (forbidden.includes(v.toLowerCase())) issues.push('Columna de estado propia no permitida: usa Estado y Razón para el estado nativos');
+    return issues;
   }
 
   /** "Punto de orden del día" -> "PuntoOrdenDia" (sin tildes ni palabras vacías). */
@@ -242,23 +264,6 @@
       ? [] : [`No sigue el patrón de solución ${patternLead(pattern)}Nombre`];
   }
 
-  /** Devuelve la lista de incumplimientos (vacía = cumple). Nunca bloquea nada. */
-  function validate(value, { category, settings, extraPrefix }) {
-    const issues = [];
-    const v = String(value || '');
-    if (!v) return ['El nombre lógico está vacío'];
-    if (!/^[a-z0-9]+(_[a-z0-9]+)*$/.test(v)) issues.push('No está en snake_case (minúsculas, sin tildes, espacios ni "__")');
-    if (category) {
-      const suffix = suffixFor(category, settings);
-      if (suffix && !v.endsWith(suffix)) issues.push('No termina en ' + suffix);
-    }
-    const pre = cleanPrefix(extraPrefix);
-    if (pre && !v.startsWith(pre + '_')) issues.push('No empieza por el prefijo de proyecto ' + pre + '_');
-    const forbidden = (settings && settings.forbiddenColumns) || DEFAULT_FORBIDDEN_COLUMNS;
-    if (forbidden.includes(v)) issues.push('Columna de estado propia no permitida: usa Estado y Razón para el estado nativos');
-    return issues;
-  }
-
   /**
    * Parte de una tabla dentro del nombre de relación, en PascalCase y sin prefijos:
    * - con nombre para mostrar: "Punto orden día" / "GS_Sociedad" → PuntoOrdenDia / Sociedad
@@ -282,40 +287,11 @@
 
   /**
    * Nombre de relación (sin el prefijo del publicador, que el portal muestra aparte):
-   * {TablaPrincipal}_{1N|NN}_{TablaSecundaria}[_{Calificador}]  →  Auditor_1N_Sociedad_AuditorPrincipal
+   * {TablaPrincipal}_{1N|NN}_{TablaSecundaria}  →  Cuenta_1N_Accion
    */
-  function buildRelationshipName({ primary, secondary, type, qualifier }) {
+  function buildRelationshipName({ primary, secondary, type }) {
     if (!primary || !secondary || !type) return '';
-    const q = qualifier ? toPascal(String(qualifier).replace(/_/g, ' '), []) : '';
-    return primary + '_' + type + '_' + secondary + (q ? '_' + q : '');
-  }
-
-  /**
-   * Calificador para distinguir varias lookups a la misma tabla: el nombre de la
-   * lookup en snake_case, solo si no coincide con el de la tabla relacionada.
-   *   "Auditor"           → gs_auditor  → ''
-   *   "Auditor principal" → gs_auditor  → 'auditor_principal'
-   */
-  function lookupQualifier({ lookupDisplay, related, pub, extraPrefix, settings }) {
-    const stop = (settings && settings.stopWords) || DEFAULT_STOP_WORDS;
-    let q = toSnake(lookupDisplay || '', stop);
-    const xp = cleanPrefix(extraPrefix || '');
-    if (xp && q.startsWith(xp + '_')) q = q.slice(xp.length + 1);
-    if (!q) return '';
-    // Comparación tolerante a plurales: "Puntos orden día" ≈ "Punto orden día" / gs_puntoordendia
-    const sing = w => w.length > 4 && /[^aeiou]es$/.test(w) ? w.slice(0, -2) : w.length > 3 && /s$/.test(w) ? w.slice(0, -1) : w;
-    const key = snake => String(snake || '').split('_').filter(Boolean).map(sing).join('');
-    const same = new Set();
-    if (related && related.display) same.add(key(toSnake(related.display, stop)));
-    if (related && related.logical) {
-      let l = String(related.logical).toLowerCase();
-      if (pub && l.startsWith(pub)) l = l.slice(pub.length);
-      const add = x => { same.add(key(x)); same.add(sing(x.replace(/_/g, ''))); };
-      add(l);
-      const i = l.indexOf('_');
-      if (i > 0) add(l.slice(i + 1)); // sin prefijo de proyecto (gs_auditor → auditor)
-    }
-    return same.has(key(q)) ? '' : q;
+    return primary + '_' + type + '_' + secondary;
   }
 
   /** Límite de Dataverse para el nombre de esquema de una relación (incluye el prefijo). */
@@ -442,7 +418,7 @@
     DEFAULT_STOP_WORDS, DEFAULT_FORBIDDEN_COLUMNS, CATEGORIES, CHOICE_TYPE,
     stripAccents, normalizeText, detectType, detectBehavior, toSnake, cleanSuffix, cleanPrefix,
     suffixFor, buildName, validate, toPascal, patternLead,
-    buildPrimaryColumnName, validatePrimaryColumn, buildTableName, validateTableName, buildSolutionName, validateSolutionName, relationshipToken, buildRelationshipName, lookupQualifier, RELATIONSHIP_MAX,
+    buildPrimaryColumnName, validatePrimaryColumn, buildTableName, validateTableName, buildSolutionName, validateSolutionName, relationshipToken, buildRelationshipName, RELATIONSHIP_MAX,
     parsePortalRelationshipDefault, validateRelationship,
     defaultSettings, mergeSettings, settingsFromStandard,
     parseContext, resolveProject

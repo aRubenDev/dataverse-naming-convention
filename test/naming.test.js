@@ -37,17 +37,21 @@ t('comportamiento calculado / acumulativo', () => {
   assert.strictEqual(N.detectBehavior('Rollup'), 'rollup');
   assert.strictEqual(N.detectBehavior('Simple'), null);
   assert.strictEqual(N.detectBehavior('Zona horaria independiente'), null);
-  assert.strictEqual(N.buildName({ displayName: 'Importe', category: 'calculated', settings: S }), 'importe_calc');
-  assert.strictEqual(N.buildName({ displayName: 'Total facturado', category: 'rollup', settings: S }), 'total_facturado_rollup');
+  assert.strictEqual(N.buildName({ displayName: 'Importe', category: 'calculated', settings: S }), 'Importe_calc');
+  assert.strictEqual(N.buildName({ displayName: 'Total facturado', category: 'rollup', settings: S }), 'TotalFacturado_rollup');
 });
 
-t('buildName', () => {
-  assert.strictEqual(N.buildName({ displayName: 'Fecha de Alta', category: 'date', settings: S }), 'fecha_alta_date');
-  assert.strictEqual(N.buildName({ displayName: 'Estado', category: 'optionset', settings: S, extraPrefix: 'GS' }), 'gs_estado_optionset');
-  assert.strictEqual(N.buildName({ displayName: 'GS_Estado', category: 'optionset', settings: S, extraPrefix: 'gs' }), 'gs_estado_optionset');
-  assert.strictEqual(N.buildName({ displayName: 'Estado optionset', category: 'optionset', settings: S }), 'estado_optionset');
-  assert.strictEqual(N.buildName({ displayName: 'Total', category: 'formula', settings: S }), 'total_formula');
-  assert.strictEqual(N.buildName({ displayName: '', category: 'text', settings: S }), '');
+t('buildName: columnas en PascalCase + sufijo, opción global con prefijo de proyecto', () => {
+  const b = (displayName, category, extraPrefix) => N.buildName({ displayName, category, settings: S, extraPrefix });
+  assert.strictEqual(b('Sociedad', 'lookup'), 'Sociedad_lookup');
+  assert.strictEqual(b('Tipo de movimiento', 'choice'), 'TipoMovimiento_choice');
+  assert.strictEqual(b('Fecha de Alta', 'date'), 'FechaAlta_date');
+  assert.strictEqual(b('Estado choice', 'choice'), 'Estado_choice');
+  assert.strictEqual(b('Total', 'formula'), 'Total_formula');
+  assert.strictEqual(b('GS_Tipo de movimiento', 'optionset', 'gs'), 'gs_TipoMovimiento_optionset');
+  assert.strictEqual(b('Tipo de movimiento', 'optionset', 'GS'), 'gs_TipoMovimiento_optionset');
+  assert.strictEqual(b('Estado optionset', 'optionset'), 'Estado_optionset');
+  assert.strictEqual(b('', 'text'), '');
 });
 
 t('migración de configuración antigua y sufijos editables', () => {
@@ -56,16 +60,20 @@ t('migración de configuración antigua y sufijos editables', () => {
   assert.strictEqual(N.suffixFor('text', old), '_txt');
   assert.deepStrictEqual(old.stopWords, ['de']);
   const cur = N.mergeSettings({ version: 2, suffixes: { text: '_t' } });
-  assert.strictEqual(N.buildName({ displayName: 'Nombre', category: 'text', settings: cur }), 'nombre_t');
+  assert.strictEqual(N.buildName({ displayName: 'Nombre', category: 'text', settings: cur }), 'Nombre_t');
 });
 
 t('validate', () => {
-  assert.deepStrictEqual(N.validate('fecha_alta_date', { category: 'date', settings: S }), []);
-  assert.strictEqual(N.validate('FechaAlta', { category: 'date', settings: S }).length, 2);
-  assert.ok(N.validate('estado_optionset', { category: 'optionset', settings: S, extraPrefix: 'gs' })[0].includes('gs_'));
-  assert.ok(N.validate('estado_choice', { category: 'choice', settings: S })[0].includes('Estado'));
-  assert.ok(N.validate('activo_bool', { category: 'boolean', settings: S })[0].includes('Estado'));
-  assert.deepStrictEqual(N.validate('estado_civil_choice', { category: 'choice', settings: S }), []);
+  const v = (value, category, extraPrefix) => N.validate(value, { category, settings: S, extraPrefix });
+  assert.deepStrictEqual(v('FechaAlta_date', 'date'), []);
+  assert.deepStrictEqual(v('Sociedad_lookup', 'lookup'), []);
+  assert.deepStrictEqual(v('gs_TipoMovimiento_optionset', 'optionset', 'gs'), []);
+  assert.ok(v('fecha_alta_date', 'date')[0].includes('PascalCase'));
+  assert.strictEqual(v('FechaAlta', 'date').length, 1);
+  assert.ok(v('TipoMovimiento_optionset', 'optionset', 'gs')[0].includes('gs_'));
+  assert.ok(v('Estado_choice', 'choice')[0].includes('Estado'));
+  assert.ok(v('Activo_bool', 'boolean')[0].includes('Estado'));
+  assert.deepStrictEqual(v('EstadoCivil_choice', 'choice'), []);
 });
 
 t('importar JSON de validaciones ECIJA', () => {
@@ -146,23 +154,12 @@ t('relaciones en PascalCase', () => {
   assert.ok(N.validateRelationship('Acta_NN_Contacto', { type: '1N' })[0].includes('1N'));
 });
 
-t('varias lookups a la misma tabla', () => {
-  const pub = 'ecija_';
-  const q = (lookupDisplay, related, extraPrefix) => N.lookupQualifier({ lookupDisplay, related, pub, extraPrefix, settings: S });
-  const aud = { logical: 'gs_auditor', display: 'Auditor' };
-  assert.strictEqual(q('Auditor', aud), '');
-  assert.strictEqual(q('Auditor', { logical: 'gs_auditor' }), '');
-  assert.strictEqual(q('GS Auditor', aud, 'gs'), '');
-  assert.strictEqual(q('Punto orden día', { logical: 'gs_puntoordendia' }), '');
-  assert.strictEqual(q('Puntos orden día', { logical: 'gs_puntoordendia', display: 'Punto orden día' }), '');
-  assert.strictEqual(q('Auditores', aud), '');
-  assert.strictEqual(q('Auditor principal', aud), 'auditor_principal');
-  assert.strictEqual(q('', aud), '');
-  assert.strictEqual(
-    N.buildRelationshipName({ primary: 'Auditor', secondary: 'Sociedad', type: '1N', qualifier: q('Auditor principal', aud) }),
-    'Auditor_1N_Sociedad_AuditorPrincipal');
+t('lookup «Sociedad» en Accion hacia Cuenta', () => {
+  const tok = d => N.relationshipToken({ display: d, pub: 'ecj_', settings: S });
+  assert.strictEqual(N.buildName({ displayName: 'Sociedad', category: 'lookup', settings: S }), 'Sociedad_lookup');
+  assert.strictEqual(N.buildRelationshipName({ primary: tok('Cuenta'), secondary: tok('Acción'), type: '1N' }), 'Cuenta_1N_Accion');
   const long = 'A'.repeat(50) + '_1N_' + 'B'.repeat(50);
-  assert.ok(N.validateRelationship(long, { type: '1N', pub })[0].includes('100'));
+  assert.ok(N.validateRelationship(long, { type: '1N', pub: 'ecj_' })[0].includes('100'));
 });
 
 console.log(`\n${ok} grupos de tests OK`);

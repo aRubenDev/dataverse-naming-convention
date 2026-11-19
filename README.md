@@ -1,14 +1,18 @@
 # ECIJA Dataverse Naming
 
 Extensión para Brave/Chrome/Edge (Manifest V3) que, en la interfaz moderna de
-`make.powerapps.com`, genera el **nombre lógico** de columnas y opciones globales
-según el estándar de validaciones ECIJA (v1.0):
+`make.powerapps.com`, genera el **nombre de esquema** de columnas, opciones globales,
+relaciones y tablas según el estándar de validaciones ECIJA (v1.0). Ejemplo en la tabla
+*Acción*:
 
 ```
-Columna:        <prefijo publicador>_<nombre_en_snake_case>_<sufijo tipo>
-                ecj_fecha_alta_cliente_date · ecj_importe_calc
-Opción global:  <prefijo publicador>_<prefijo proyecto>_<nombre>_optionset
-                ecj_gs_estado_optionset (nombre para mostrar: GS_Estado)
+Columna:        <publicador>_<NombrePascalCase>_<sufijo tipo>
+                «Sociedad» (búsqueda a Cuenta) → ecj_Sociedad_lookup
+                «Tipo de movimiento» (opción)  → ecj_TipoMovimiento_choice
+Relación:       <publicador>_<TablaRelacionada>_1N_<TablaActual> → ecj_Cuenta_1N_Accion
+Opción global:  <publicador>_<proyecto>_<NombrePascalCase>_optionset
+                ecj_gs_TipoMovimiento_optionset (nombre para mostrar: GS_Tipo de movimiento)
+Tabla:          <publicador>_<proyecto>_<NombrePascalCase> → ecj_gs_PuntoOrdenDia
 ```
 
 El prefijo del publicador lo pone el portal y no se toca.
@@ -64,7 +68,7 @@ Tras modificar el código: botón ⟳ de la extensión y recarga la pestaña del
 | Escribes el nombre para mostrar o cambias el tipo | Regenera el nombre lógico |
 | Escribes tú en el nombre lógico | Deja de tocarlo en ese panel (aunque cambies el tipo) |
 | Botón **Regenerar** del aviso | Vuelve al modo automático |
-| Panel "Nueva opción" (opción global) | Mismo cálculo con `_optionset` y el prefijo de proyecto y, si hay prefijo de proyecto, el nombre para mostrar empieza por él en mayúsculas (`CRM_Estado`). Se añade una vez; si lo borras, se respeta |
+| Panel "Nueva opción" (opción global) | Mismo cálculo con `_optionset` y el prefijo de proyecto (`gs_TipoMovimiento_optionset`) y, si hay prefijo de proyecto, el nombre para mostrar empieza por él en mayúsculas (`GS_Tipo de movimiento`). Se añade una vez; si lo borras, se respeta |
 | Columna de tipo Búsqueda | Además, nombre de la relación: `TablaRelacionada_1N_TablaActual` |
 | Relaciones → Uno a varios | `TablaActual_1N_TablaRelacionada` + columna de búsqueda con `_lookup` |
 | Relaciones → Varios a uno | `TablaRelacionada_1N_TablaActual` + columna de búsqueda con `_lookup` |
@@ -77,19 +81,11 @@ Tras modificar el código: botón ⟳ de la extensión y recarga la pestaña del
 
 En las relaciones cada tabla se escribe con su **nombre para mostrar en PascalCase**, sin
 prefijo de proyecto; el del publicador lo pone el portal delante:
-`ecija_Auditor_1N_Sociedad`. Si no se detecta el nombre para mostrar de una tabla, se usa
+`ecj_Cuenta_1N_Accion`. El nombre de la columna de búsqueda no se añade: si hay dos lookups
+a la misma tabla, el portal avisará del nombre duplicado y se corrige a mano. Si no se detecta el nombre para mostrar de una tabla, se usa
 su nombre lógico (aprendido del valor que propone el portal al crear un lookup y guardado
 en una caché local) y el aviso lo indica. La tabla actual se identifica por la URL, la
 ruta de navegación o el título.
-
-**Varias lookups a la misma tabla.** Si el nombre de la columna de búsqueda no coincide
-con el de la tabla relacionada (se toleran singular/plural), se añade al final de la
-relación para que no se repita:
-
-| Lookup | Tabla relacionada | Relación |
-|---|---|---|
-| Auditor | Auditor | `Auditor_1N_Sociedad` |
-| Auditor principal | Auditor | `Auditor_1N_Sociedad_AuditorPrincipal` |
 
 El aviso marca también si el nombre supera los 100 caracteres de Dataverse.
 
@@ -102,13 +98,13 @@ Mientras filtras en un desplegable con búsqueda (p. ej. "Tabla relacionada") la
 extensión no escribe en ningún campo, y si el portal mueve el foco al rellenar un
 campo, lo devuelve a donde estabas.
 
-El aviso bajo el nombre lógico indica si cumple (snake_case en columnas y PascalCase en
-tablas y relaciones, sufijo, prefijo de proyecto en
-opciones globales, columnas de estado prohibidas).
+El aviso bajo el nombre de esquema indica si cumple (PascalCase, sufijo, prefijo de proyecto
+en opciones globales y tablas, columnas de estado prohibidas).
 Es solo informativo: nunca impide guardar.
 
-Conversión: minúsculas, sin tildes ni ñ, sin caracteres especiales y sin palabras vacías
-(`Fecha de Alta del Cliente` → `fecha_alta_cliente`).
+Conversión: PascalCase, sin tildes ni ñ, sin caracteres especiales y sin palabras vacías
+(`Fecha de Alta del Cliente` → `FechaAltaCliente`). El nombre lógico es el mismo en
+minúsculas (`ecj_fechaaltacliente_date`); eso lo hace Dataverse.
 
 ## Si algo no se detecta
 
